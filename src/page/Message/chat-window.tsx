@@ -1,4 +1,3 @@
-import { Conversation, User } from "@/types/message";
 import type React from "react";
 
 import { useRef, useEffect } from "react";
@@ -14,10 +13,16 @@ import { FaInfo, FaThumbsUp } from "react-icons/fa";
 import ChatMessage from "./chat-message";
 import { LuInfo } from "react-icons/lu";
 import { IoIosInformation } from "react-icons/io";
+import { IConversation } from "@/types/chat";
+import { IUser } from "@/types/user";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, AppState } from "@/redux";
+import { URL_IMAGE } from "@/constants";
+import { getMessagesByConversationId } from "@/redux/message/action";
 
 interface ChatWindowProps {
-  conversation: Conversation;
-  participant: User;
+  conversation: IConversation;
+  participant: IUser;
   onSendMessage: (content: string) => void;
   onToggleInfoPanel: () => void;
 }
@@ -32,6 +37,13 @@ export default function ChatWindow({
   onSendMessage,
   onToggleInfoPanel,
 }: ChatWindowProps) {
+  const dispatch = useDispatch<AppDispatch>();
+  const { userInfo } = useSelector((state: AppState) => state.auth);
+  const { messageList } = useSelector((state: AppState) => state.message);
+  const { currentConversationId } = useSelector(
+    (state: AppState) => state.conversation
+  );
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { register, handleSubmit, reset, watch } = useForm<MessageFormData>({
@@ -39,7 +51,9 @@ export default function ChatWindow({
       message: "",
     },
   });
-
+  useEffect(() => {
+    dispatch(getMessagesByConversationId(currentConversationId));
+  }, [currentConversationId]);
   const messageValue = watch("message");
 
   const onSubmit = (data: MessageFormData) => {
@@ -55,11 +69,12 @@ export default function ChatWindow({
       handleSubmit(onSubmit)();
     }
   };
+  console.log("message", messageList);
 
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [conversation.messages]);
+  }, [messageList]);
 
   return (
     <div className="flex-1 flex flex-col h-full">
@@ -71,15 +86,21 @@ export default function ChatWindow({
         >
           <div className="h-10 w-10 rounded-full overflow-hidden">
             <img
-              src={participant.avatar || "/placeholder.svg?height=40&width=40"}
-              alt={participant.name}
+              src={
+                participant?.avatar
+                  ? `${URL_IMAGE}/${participant?.avatar?.id}/${participant.avatar?.filename_download}`
+                  : "/placeholder.svg?height=40&width=40"
+              }
+              alt={participant?.last_name}
               className="h-full w-full object-cover"
             />
           </div>
           <div>
-            <p className="font-medium">{participant.name}</p>
+            <p className="font-medium">
+              {participant.first_name}" "{participant.last_name}
+            </p>
             <p className="text-xs text-gray-400">
-              {participant.isActive ? "Active now" : "Inactive"}
+              {/* {participant.isActive ? "Active now" : "Inactive"} */}
             </p>
           </div>
         </div>
@@ -96,11 +117,11 @@ export default function ChatWindow({
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {conversation.messages.map((message) => (
+        {messageList?.map((message) => (
           <ChatMessage
             key={message.id}
             message={message}
-            isCurrentUser={message.senderId === "current-user"}
+            isCurrentUser={message.sender === userInfo.id}
             participant={participant}
           />
         ))}

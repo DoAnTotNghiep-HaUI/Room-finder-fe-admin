@@ -3,11 +3,12 @@
 import type React from "react";
 
 import { Disclosure } from "@headlessui/react";
-import { User } from "@/types/message";
 import { LuChevronDown } from "react-icons/lu";
+import { IUser } from "@/types/user";
+import { URL_IMAGE } from "@/constants";
 
 interface ChatInfoPanelProps {
-  user: User;
+  user: IUser;
 }
 
 export default function ChatInfoPanel({ user }: ChatInfoPanelProps) {
@@ -16,14 +17,20 @@ export default function ChatInfoPanel({ user }: ChatInfoPanelProps) {
       <div className="p-6 flex flex-col items-center text-center">
         <div className="h-24 w-24 rounded-full overflow-hidden mb-4">
           <img
-            src={user.avatar || "/placeholder.svg?height=96&width=96"}
-            alt={user.name}
+            src={
+              user?.avatar
+                ? `${URL_IMAGE}/${user?.avatar?.id}/${user?.avatar?.filename_download}`
+                : "/placeholder.svg?height=96&width=96"
+            }
+            alt={user.last_name}
             className="h-full w-full object-cover"
           />
         </div>
-        <h2 className="text-xl font-bold">{user.name}</h2>
+        <h2 className="text-xl font-bold">
+          {user.first_name} {user.last_name}
+        </h2>
         <p className="text-sm text-gray-400 mt-1">
-          {user.isActive ? "Active now" : "Inactive"}
+          {/* {user.isActive ? "Active now" : "Inactive"} */}
         </p>
       </div>
 

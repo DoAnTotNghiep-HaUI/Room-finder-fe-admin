@@ -31,7 +31,7 @@ module.exports = {
         // success: "#16a34a",
         // danger: "#dc2626",
         // warning: "#facc15",
-        primary: "#334EAC",
+        primary: "#1E88E5",
         secondary: "#7096D1",
         text: "#081F5C",
         accent: "#FF7043",

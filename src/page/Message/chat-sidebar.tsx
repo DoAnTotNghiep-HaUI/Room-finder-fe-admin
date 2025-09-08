@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { Tab } from "@headlessui/react";
-import { Conversation } from "@/types/message";
-import { mockUsers } from "@/constants/mockData";
 import { BiEdit, BiSearch } from "react-icons/bi";
 import { cn } from "@/utils/utils";
+import { useChat } from "@/hooks/useChat";
+import { URL_IMAGE } from "@/constants";
+import { IConversation } from "@/types/chat";
 
 interface ChatSidebarProps {
-  conversations: Conversation[];
+  conversations: IConversation[];
   selectedConversationId: string | null;
   onSelectConversation: (id: string) => void;
 }
@@ -18,14 +19,15 @@ export default function ChatSidebar({
   selectedConversationId,
   onSelectConversation,
 }: ChatSidebarProps) {
+  const { getConversationPartner } = useChat();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredConversations = conversations.filter((conversation) => {
-    const user = mockUsers.find(
-      (user) => user.id === conversation.participantId
-    );
-    return user?.name.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  // const filteredConversations = conversations.filter((conversation) => {
+  //   const user = mockUsers.find(
+  //     (user) => user.id === conversation.participantId
+  //   );
+  //   return user?.name.toLowerCase().includes(searchQuery.toLowerCase());
+  // });
 
   const formatTimestamp = (date: Date) => {
     const now = new Date();
@@ -111,12 +113,13 @@ export default function ChatSidebar({
 
         <Tab.Panels>
           <Tab.Panel className="overflow-y-auto h-[calc(100vh-140px)]">
-            {filteredConversations.map((conversation) => {
-              const user = mockUsers.find(
-                (user) => user.id === conversation.participantId
-              );
-              if (!user) return null;
-
+            {conversations.map((conversation: IConversation) => {
+              // const user = mockUsers.find(
+              //   (user) => user.id === conversation.participantId
+              // );
+              // if (!user) return null;
+              const lastMessage = conversation?.last_message;
+              const partner = getConversationPartner(conversation);
               return (
                 <div
                   key={conversation.id}
@@ -130,30 +133,35 @@ export default function ChatSidebar({
                     <div className="h-12 w-12 rounded-full overflow-hidden">
                       <img
                         src={
-                          user.avatar || "/placeholder.svg?height=48&width=48"
+                          partner?.avatar
+                            ? `${URL_IMAGE}/${partner?.avatar?.id}/${partner.avatar?.filename_download}`
+                            : "/placeholder.svg?height=40&width=40"
                         }
-                        alt={user.name}
+                        alt={partner?.last_name}
                         className="h-full w-full object-cover"
                       />
                     </div>
-                    {user.isActive && (
+                    {/* {user.isActive && (
                       <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white"></span>
-                    )}
+                    )} */}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center">
-                      <p className="font-medium truncate">{user.name}</p>
+                      <p className="font-medium truncate">
+                        {" "}
+                        {partner?.first_name} {partner?.last_name}
+                      </p>
                       <span className="text-xs text-gray-400">
-                        {formatTimestamp(conversation.lastMessageTime)}
+                        {formatTimestamp(conversation.last_message_time)}
                       </span>
                     </div>
                     <p className="text-sm text-gray-400 truncate">
-                      {conversation.lastMessage}
+                      {conversation?.last_message?.content}
                     </p>
                   </div>
 
-                  {conversation.unreadCount > 0 && (
+                  {conversation?.unread_count > 0 && (
                     <div className="h-2 w-2 rounded-full bg-blue-500 flex items-center justify-center text-xs">
                       {/* {conversation.unreadCount} */}
                     </div>
