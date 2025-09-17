@@ -21,22 +21,22 @@ const Properties = () => {
           duration: 0.3,
         }}
       >
-        <h1 className="text-2xl font-bold mb-6">Property Management</h1>
+        <h1 className="text-2xl font-bold mb-6">Quản lý phòng</h1>
       </motion.div>
       <Tab.Group>
-        <Tab.List className="flex space-x-1 rounded-xl bg-indigo-100 p-1 mb-6">
+        <Tab.List className="flex space-x-1 rounded-xl bg-sky-200 p-1 mb-6">
           <Tab
             className={({
               selected,
             }) => `w-full rounded-lg py-2.5 text-sm font-medium leading-5 
               ${
                 selected
-                  ? "bg-white text-indigo-700 shadow"
-                  : "text-indigo-600 hover:bg-white/[0.12] hover:text-indigo-800"
+                  ? "bg-white text-primary shadow"
+                  : "text-blue-400 hover:bg-white/[0.12] hover:text-blue-600"
               } flex items-center justify-center gap-2`}
           >
             <BiBuilding size={18} />
-            Buildings
+            Toà nhà
           </Tab>
           <Tab
             className={({
@@ -44,12 +44,12 @@ const Properties = () => {
             }) => `w-full rounded-lg py-2.5 text-sm font-medium leading-5 
               ${
                 selected
-                  ? "bg-white text-indigo-700 shadow"
-                  : "text-indigo-600 hover:bg-white/[0.12] hover:text-indigo-800"
+                  ? "bg-white text-primary shadow"
+                  : "text-blue-400 hover:bg-white/[0.12] hover:text-blue-600"
               } flex items-center justify-center gap-2`}
           >
             <LuDoorOpen size={18} />
-            Rooms
+            Phòng
           </Tab>
         </Tab.List>
         <Tab.Panels>

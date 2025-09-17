@@ -1,24 +1,27 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Building } from "@/types/building";
 import { BiX } from "react-icons/bi";
+import { IBuilding } from "@/types/building";
 
 interface BuildingFormProps {
-  building?: Building | null;
+  building?: IBuilding | null;
   onClose: () => void;
 }
 const BuildingForm = ({ building, onClose }: BuildingFormProps) => {
   const [formData, setFormData] = useState({
     name: building?.name || "",
-    address: building?.address || "",
+    year_constructions: building?.year_constructions || "",
+    city: building?.city || "Hà Nội",
+    district: building?.district || "",
+    ward: building?.ward || "",
+    specific_address: building?.specific_address || "",
     description: building?.description || "",
-    totalRooms: building?.totalRooms || 0,
-    notes: building?.notes || "",
-    defaultServices: {
-      electricity: building?.defaultServices.electricity || 0,
-      water: building?.defaultServices.water || 0,
-      internet: building?.defaultServices.internet || 0,
-    },
+    total_rooms: building?.total_rooms || 0,
+    total_floors: building?.total_floors || 0,
+    area: building?.area || 0,
+    google_map_link: building?.google_map_link || "",
+    lat: building?.lat || "",
+    lng: building?.lng || "",
   });
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,11 +69,11 @@ const BuildingForm = ({ building, onClose }: BuildingFormProps) => {
             </label>
             <input
               type="number"
-              value={formData.totalRooms}
+              value={formData.total_rooms}
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  totalRooms: parseInt(e.target.value),
+                  total_rooms: parseInt(e.target.value),
                 })
               }
               className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -84,11 +87,11 @@ const BuildingForm = ({ building, onClose }: BuildingFormProps) => {
             </label>
             <input
               type="text"
-              value={formData.address}
+              value={formData.specific_address}
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  address: e.target.value,
+                  specific_address: e.target.value,
                 })
               }
               className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -117,14 +120,14 @@ const BuildingForm = ({ building, onClose }: BuildingFormProps) => {
               Default Service Prices
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Electricity (per kWh)
                 </label>
                 <input
                   type="number"
                   step="0.01"
-                  value={formData.defaultServices.electricity}
+                  value={formData.}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -136,8 +139,8 @@ const BuildingForm = ({ building, onClose }: BuildingFormProps) => {
                   }
                   className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-              </div>
-              <div>
+              </div> */}
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Water (per m³)
                 </label>
@@ -156,8 +159,8 @@ const BuildingForm = ({ building, onClose }: BuildingFormProps) => {
                   }
                   className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-              </div>
-              <div>
+              </div> */}
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Internet (flat rate)
                 </label>
@@ -176,7 +179,7 @@ const BuildingForm = ({ building, onClose }: BuildingFormProps) => {
                   }
                   className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-              </div>
+              </div> */}
             </div>
           </div>
           <div className="md:col-span-2">
@@ -184,11 +187,11 @@ const BuildingForm = ({ building, onClose }: BuildingFormProps) => {
               Additional Notes
             </label>
             <textarea
-              value={formData.notes}
+              value={formData.google_map_link}
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  notes: e.target.value,
+                  google_map_link: e.target.value,
                 })
               }
               rows={3}

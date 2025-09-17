@@ -1,14 +1,34 @@
-import FileUpload from "@/components/Input/file-upload-multiple";
-import { Room } from "@/types/room";
+import ReusableCategorySelector from "@/components/category/category-selector";
+import FileUpload from "@/components/Input/file-upload";
+import { AppDispatch, AppState } from "@/redux";
+import { getListAmenities } from "@/redux/amenities/action";
+import { getListFurnitures } from "@/redux/furnitures/action";
+import { IAmenity, IRoom, IRoomService, IService } from "@/types/room";
+import {
+  contractDurationOptions,
+  limitPeople,
+  rentalObject,
+  roomStatus,
+} from "@/utils/data";
 import { MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import React, { useCallback, useState } from "react";
-import { useForm } from "react-hook-form";
+import { AnimatePresence, motion } from "framer-motion";
+import React, { useCallback, useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { BiX } from "react-icons/bi";
 import { IoVideocamOutline } from "react-icons/io5";
+import { useDispatch, useSelector } from "react-redux";
+import ServiceForm from "./services/service-form";
+import ServiceCardGrid from "./services/service-card";
+import { getListServices } from "@/redux/services/action";
+import { URL_IMAGE } from "@/constants";
+import { IFile } from "@/types/file";
+import MDEditor from "@uiw/react-md-editor";
+import Radio from "@/components/Input/radio";
+import { DragAndDropInput } from "@/components/Input/file-upload-multiple";
 
 interface RoomFormProps {
-  room?: Room | null;
+  room?: IRoom | null;
   onClose: () => void;
 }
 interface FileWithPreview extends File {
@@ -20,69 +40,175 @@ interface SortableImageProps {
   index: number;
 }
 const RoomForm = ({ room, onClose }: RoomFormProps) => {
-  const [formData, setFormData] = useState({
-    number: room?.number || "",
-    buildingId: room?.buildingId || "",
-    type: room?.type || "studio",
-    floor: room?.floor || 1,
-    status: room?.status || "available",
-    baseRent: room?.baseRent || 0,
-    area: room?.area || 0,
-    amenities: room?.amenities || [],
-  });
-  const buildings = [
-    {
-      id: "1",
-      name: "Sunset Apartments",
-    },
-    {
-      id: "2",
-      name: "Ocean View Complex",
-    },
-  ];
-  const roomTypes = ["studio", "single", "double", "suite"];
-  const roomStatuses = ["available", "occupied", "maintenance"];
-  const availableAmenities = [
-    "Air Conditioning",
-    "Balcony",
-    "Built-in Wardrobe",
-    "City View",
-    "Furnished",
-    "High Floor",
-    "Parking Space",
-    "Pet Friendly",
-  ];
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Handle form submission
-    onClose();
-  };
-  const toggleAmenity = (amenity: string) => {
-    setFormData({
-      ...formData,
-      amenities: formData.amenities.includes(amenity)
-        ? formData.amenities.filter((a) => a !== amenity)
-        : [...formData.amenities, amenity],
-    });
-  };
+  const dispatch = useDispatch<AppDispatch>();
+  const { buildingList } = useSelector((state: AppState) => state.building);
+  const { roomTypeList } = useSelector((state: AppState) => state.roomType);
+  const { amenitiesList } = useSelector((state: AppState) => state.amenities);
+  const { servicesList } = useSelector((state: AppState) => state.services);
+  const { accessToken } = useSelector((state: AppState) => state.auth);
+  const { furnituresList } = useSelector((state: AppState) => state.furnitures);
   const [images, setImages] = useState<FileWithPreview[]>([]);
-  const [video, setVideo] = useState<FileWithPreview | null>(null);
+  // const [video, setVideo] = useState<FileWithPreview | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor));
-  const handleDragStart = () => {
-    setIsDragging(true);
-  };
-  const handleDragEnd = (event: any) => {
-    setIsDragging(false);
-    const { active, over } = event;
-    if (active.id !== over.id) {
-      setImages((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
+  const [showServiceForm, setShowServiceForm] = useState(false);
+
+  const defaultServices = room
+    ? room?.services
+    : servicesList?.filter((service) => service?.is_default === true);
+
+  const [services, setServices] = useState<IService[]>(defaultServices);
+  const [editingService, setEditingService] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState<IFile[]>([]);
+  const defaultRoomImage = room ? room?.photos : [];
+
+  const [roomPhotos, setRoomPhotos] = useState<IFile[]>(defaultRoomImage);
+  console.log("defaultServices", room?.services);
+  const defaultRoomVideo = room ? room?.video : null;
+  const externalLink = `${URL_IMAGE}/${room.video?.id}/${room.video?.filename_download}`;
+  const [previewVideo, setPreviewVideo] = useState<string>(
+    externalLink || null
+  );
+  console.log("images", images);
+  const [editingServiceIndex, setEditingServiceIndex] = useState<number | null>(
+    null
+  );
+  // const [formData, setFormData] = useState({
+  //   number: room?.number_room || "",
+  //   building: room?.building?.id || "",
+  //   room_type: room?.room_type?.id || 1,
+  //   floor: room?.floor || 1,
+  //   status: room?.status || "available",
+  //   title: room?.title || "",
+  //   acreage: room?.acreage || 0,
+  //   services: room?.services || [],
+  //   amenities: room?.amenities || [],
+  //   furnitures: room?.furnitures || [],
+  //   deposit: room?.deposit || "",
+  //   room_price: room?.room_price || "",
+  //   rental_object: room?.rental_object || "all",
+  //   limit_people: room?.limit_people || 2,
+  //   description: room?.description || "",
+  //   contract_duration: room?.contract_duration || "1_year",
+  //   photos: [],
+  // });
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    control,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      number: 0,
+      building: "",
+      room_type: "",
+      floor: 1,
+      status: "available",
+      title: "",
+      acreage: 0,
+      services: [],
+      amenities: [],
+      furnitures: [],
+      deposit: 0,
+      room_price: 0,
+      rental_object: "all",
+      limit_people: 2,
+      description: "",
+      contract_duration: "1_year",
+      photos: [],
+      video: null,
+    },
+  });
+
+  useEffect(() => {
+    if (room) {
+      reset({
+        number: room.number_room || 0,
+        building: room.building?.id || "",
+        room_type: room.room_type?.id || "",
+        floor: room.floor || 1,
+        status: room.status || "available",
+        title: room.title || "",
+        acreage: room.acreage || 0,
+        services: room?.services || [],
+        amenities: room?.amenities?.map((a: any) => a.id) || [],
+        furnitures: room?.furnitures?.map((f: any) => f.id) || [],
+        deposit: room.deposit || 0,
+        room_price: room.room_price || 0,
+        rental_object: room.rental_object || "all",
+        limit_people: room.limit_people || 2,
+        description: room.description || "",
+        contract_duration: room.contract_duration || "1_year",
+        photos: room?.photos || [],
+        video: room?.video || null,
       });
+      // if (room.photos?.length) {
+      //   const urls = room.photos.map(
+      //     (photo: any) => `${URL_IMAGE}/${photo.id}/${photo.filename_download}`
+      //   );
+      //   setValue("photos", urls);
+      // }
+      // if (room.video) {
+      //   console.log("video", room.video);
+
+      //   const videoUrl = `${URL_IMAGE}/${room.video.id}/${room.video.filename_download}`;
+      //   setVideo({
+      //     preview: videoUrl,
+      //     id: room.video.id,
+      //   } as FileWithPreview);
+      // }
     }
+  }, [room, reset]);
+  const floor = watch("floor");
+  const room_price = watch("room_price");
+  const acreage = watch("acreage");
+  const description = watch("description");
+  const rental_object = watch("rental_object");
+  const limit_people = watch("limit_people");
+  const deposit = watch("deposit");
+  const contract_duration = watch("contract_duration");
+  const photos = watch("photos");
+  const video = watch("video");
+  console.log("video", video);
+
+  console.log(
+    "amenities",
+    room?.amenities?.map((a: any) => a.amenities_id)
+  );
+
+  useEffect(() => {
+    dispatch(getListAmenities());
+    dispatch(getListFurnitures());
+  }, []);
+  const onSubmit = (data: any) => {
+    console.log("Form data:", data);
+    onClose();
   };
+  useEffect(() => {
+    fetch(externalLink, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch the video");
+        }
+        return response.blob();
+      })
+      .then((blob) => {
+        setPreviewVideo(URL.createObjectURL(blob));
+      })
+      .catch((error) => {
+        console.error("Error fetching video:", error);
+        setPreviewVideo(null);
+      });
+  }, [room]);
   const onDrop = useCallback(
     (acceptedFiles: File[], fileType: "image" | "video") => {
       acceptedFiles.forEach((file) => {
@@ -92,23 +218,33 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
             preview: reader.result as string,
             id: Math.random().toString(36).substring(7),
           });
+
           if (fileType === "image") {
-            setImages((prev) => [...prev, fileWithPreview]);
+            setImages((prev) => {
+              const updated = [...prev, fileWithPreview];
+              setValue("photos", updated);
+              return updated;
+            });
           } else {
-            setVideo(fileWithPreview);
+            // setVideo(fileWithPreview);
           }
         };
         reader.readAsDataURL(file);
       });
     },
-    []
+    [setValue]
   );
-  const removeImage = (id: string) => {
-    setImages(images.filter((image) => image.id !== id));
+
+  const removeImage = (index: number) => {
+    setImages((prev) => {
+      const updated = prev.filter((_, i) => i !== index);
+      setValue("photos", updated);
+      return updated;
+    });
   };
-  const removeVideo = () => {
-    setVideo(null);
-  };
+  // const removeVideo = () => {
+  //   setVideo(null);
+  // };
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -129,12 +265,45 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
     });
     onDrop(acceptedFiles, type);
   };
-  const { control } = useForm({
-    defaultValues: {
-      roomImage: "",
-      // ... other form fields
-    },
-  });
+  // const { control } = useForm({
+  //   defaultValues: {
+  //     photos: "",
+  //     // ... other form fields
+  //   },
+  // });
+  const handleServiceSubmit = (serviceData) => {
+    console.log("Service data:", serviceData);
+
+    setEditingServiceIndex(null);
+  };
+  console.log("serviceEdit", editingService);
+  const handleServiceEdit = (service: IService, index: number) => {
+    console.log("serviceEdit", service);
+
+    setEditingServiceIndex(index);
+  };
+
+  const handleAddService = (service: IService) => {
+    setServices((prev) => [...prev, service]);
+  };
+
+  const handleDeleteService = (serviceId: string) => {
+    setServices((prev) => prev.filter((service) => service.id !== serviceId));
+  };
+
+  const handleFilesChange = (files: IFile[]) => {
+    setUploadedFiles(files);
+    console.log("Uploaded files:", files);
+  };
+
+  const handleRoomPhotosChange = (files: IFile[]) => {
+    setRoomPhotos(files);
+    console.log("Room files:", files);
+  };
+  // const handleRoomVideoChange = (files: IFile) => {
+  //   setRoomVideo(files);
+  //   console.log("Room files:", files);
+  // };
   return (
     <div className="w-full">
       <div className="flex justify-between items-center p-6 border-b border-gray-200">
@@ -149,48 +318,61 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
         </button>
       </div>
       <form
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmit(onSubmit)}
         className="p-6 space-y-6"
       >
         <div className="max-h-[500px] overflow-y-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 ">
-            <div>
+            <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Room Number
+                Tiêu đề
               </label>
               <input
                 type="text"
-                value={formData.number}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    number: e.target.value,
-                  })
-                }
-                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={room?.description || ""}
+                onChange={(e) => setValue("description", e.target.value)}
+                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E88E5]"
                 required
               />
+              {errors.description && (
+                <p className="text-red-500 text-sm">
+                  Tiêu đề không được để trống
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phòng số
+              </label>
+              <input
+                type="text"
+                value={room?.number_room || ""}
+                onChange={(e) => setValue("number", parseInt(e.target.value))}
+                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E88E5]"
+                required
+              />
+              {errors.number && (
+                <p className="text-red-500 text-sm">Hãy nhập số phòng</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Building
               </label>
               <select
-                value={formData.buildingId}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    buildingId: e.target.value,
-                  })
-                }
-                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                // value={formData.building}
+                // onChange={(e) =>
+                //   setValue("bui")
+                // }
+                {...register("building", { required: true })}
+                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E88E5]"
                 required
               >
                 <option value="">Select Building</option>
-                {buildings.map((building) => (
+                {buildingList.map((building) => (
                   <option
-                    key={building.id}
-                    value={building.id}
+                    key={building?.id}
+                    value={building?.id}
                   >
                     {building.name}
                   </option>
@@ -199,25 +381,26 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Room Type
+                Phòng đơn
               </label>
               <select
-                value={formData.type}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    type: e.target.value as Room["type"],
-                  })
-                }
-                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                // value={formData.room_type}
+                // onChange={(e) =>
+                //   setFormData({
+                //     ...formData,
+                //     room_type: e.target.value,
+                //   })
+                // }
+                {...register("room_type", { required: true })}
+                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E88E5]"
                 required
               >
-                {roomTypes.map((type) => (
+                {roomTypeList.map((type) => (
                   <option
-                    key={type}
-                    value={type}
+                    key={type?.id}
+                    value={type?.id}
                   >
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                    {type?.name}
                   </option>
                 ))}
               </select>
@@ -227,185 +410,281 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
                 Status
               </label>
               <select
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    status: e.target.value as Room["status"],
-                  })
-                }
-                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                // value={formData?.status}
+                // onChange={(e) =>
+                //   setFormData({
+                //     ...formData,
+                //     status: e.target.value,
+                //   })
+                // }
+                {...register("status")}
+                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E88E5]"
                 required
               >
-                {roomStatuses.map((status) => (
+                {roomStatus.map((status) => (
                   <option
-                    key={status}
-                    value={status}
+                    key={status?.value}
+                    value={status?.value}
                   >
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                    {status.label}
                   </option>
                 ))}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Floor Number
+                Tầng
               </label>
               <input
                 type="number"
-                value={formData.floor}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    floor: parseInt(e.target.value),
-                  })
-                }
-                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={floor}
+                onChange={(e) => setValue("floor", parseInt(e.target.value))}
+                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E88E5]"
                 required
                 min="1"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Base Rent ($/month)
+                Giá thuê (đ/Tháng)
               </label>
               <input
                 type="number"
-                value={formData.baseRent}
+                value={room_price}
                 onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    baseRent: parseInt(e.target.value),
-                  })
+                  setValue("room_price", parseInt(e.target.value))
                 }
-                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E88E5]"
                 required
                 min="0"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Area (m²)
+                Tiền cọc (đ/Tháng)
               </label>
               <input
                 type="number"
-                value={formData.area}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    area: parseInt(e.target.value),
-                  })
-                }
-                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={deposit}
+                onChange={(e) => setValue("deposit", parseInt(e.target.value))}
+                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E88E5]"
                 required
                 min="0"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Diện tích (m²)
+              </label>
+              <input
+                type="number"
+                value={acreage}
+                onChange={(e) => setValue("acreage", parseInt(e.target.value))}
+                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E88E5]"
+                required
+                min="0"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Số người tối đa
+              </label>
+              <Radio
+                name="limitPeople"
+                options={limitPeople}
+                value={limit_people}
+                onChange={(value) => setValue("limit_people", value)}
+                // gridCols={2}
+                layout="horizontal"
+                // title="Số người tối đa"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Đối tượng thuê
+              </label>
+              <Radio
+                name="rentalObject"
+                options={rentalObject}
+                value={rental_object}
+                onChange={(value) => setValue("rental_object", value)}
+                // gridCols={}
+                layout="horizontal"
+                // title="Số người tối đa"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Thời hạn hợp đồng
+              </label>
+              <Radio
+                name="contractDuration"
+                options={contractDurationOptions}
+                value={contract_duration}
+                onChange={(value) => setValue("rental_object", value)}
+                // gridCols={}
+                layout="horizontal"
+                // title="Số người tối đa"
+              />
+            </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Amenities
+                Dịch vụ
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {availableAmenities.map((amenity) => (
-                  <label
-                    key={amenity}
-                    className={`flex items-center gap-2 p-2 rounded border ${
-                      formData.amenities.includes(amenity)
-                        ? "border-indigo-500 bg-indigo-50"
-                        : "border-gray-200"
-                    } cursor-pointer hover:bg-gray-50`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={formData.amenities.includes(amenity)}
-                      onChange={() => toggleAmenity(amenity)}
-                      className="rounded text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span className="text-sm">{amenity}</span>
-                  </label>
-                ))}
+              {/* <div className="grid  gap-2"> */}
+              <div>
+                <ServiceCardGrid
+                  setValue={setValue}
+                  watch={watch}
+                  name="services"
+                  servicesList={servicesList}
+                  // services={services}
+                  onEdit={handleServiceEdit}
+                  onAdd={(s) => setValue("services", [...watch("services"), s])}
+                  onDelete={(id) =>
+                    setValue(
+                      "services",
+                      watch("services").filter((s) => s.id !== id)
+                    )
+                  }
+                />
               </div>
+              <ServiceForm
+                isOpen={editingServiceIndex !== null}
+                onClose={() => setEditingServiceIndex(null)}
+                onSubmit={handleServiceSubmit}
+                initialData={
+                  editingServiceIndex !== null
+                    ? watch("services")[editingServiceIndex]
+                    : null
+                }
+                setValue={setValue}
+                watch={watch}
+                name="services"
+                index={editingServiceIndex}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tiện nghi
+              </label>
+              {/* <div className="grid  gap-2"> */}
+              <ReusableCategorySelector
+                name="amenities"
+                cols={4}
+                watch={watch}
+                setValue={setValue}
+                categories={amenitiesList}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nội thất
+              </label>
+
+              <ReusableCategorySelector
+                name="furnitures"
+                cols={4}
+                watch={watch}
+                setValue={setValue}
+                categories={furnituresList}
+              />
             </div>
           </div>
+
           <div className="space-y-4">
             <label className="block text-sm font-medium text-gray-700">
-              Room Images
+              Ảnh
             </label>
-            <FileUpload
-              name="roomImages"
-              control={control}
-              multiple={true}
-              maxFiles={5}
+            {/* <FileUpload
+              defaultImageUrls={
+                room?.photos?.map(
+                  (p: any) => `${URL_IMAGE}/${p.id}/${p.filename_download}`
+                ) || []
+              }
+              multiple
               onChange={(files) => {
-                // Handle multiple files
-                console.log("Files changed:", files);
+                // files gồm cả string (ảnh cũ) và File (ảnh mới)
+                setValue("photos", files);
               }}
-              onDelete={(index) => {
-                // Handle image deletion
-                console.log("Image deleted at index:", index);
+            /> */}
+            {/* <FileUpload
+              maxFiles={5}
+              minFiles={1}
+              existingImages={roomPhotos}
+              onImagesChange={handleRoomPhotosChange}
+              title="Quản lý hình ảnh phòng"
+              description="Xem và chỉnh sửa hình ảnh phòng trọ"
+            /> */}
+            <Controller
+              name="photos"
+              control={control}
+              render={({ field }) => {
+                console.log("field", field);
+
+                return (
+                  <>
+                    <DragAndDropInput
+                      onChange={(file) => {
+                        field.onChange(file);
+                      }}
+                      multiple
+                      maxFiles={5}
+                      links={
+                        photos?.map(
+                          (photo: any) =>
+                            `${URL_IMAGE}/${photo.id}/${photo.filename_download}`
+                        ) || []
+                      }
+                    />
+                  </>
+                );
               }}
             />
           </div>
           <div className="space-y-4">
             <label className="block text-sm font-medium text-gray-700">
-              Room Video (Optional)
+              Video
             </label>
-            <div
-              className={`border-2 border-dashed rounded-lg p-6 transition-colors ${
-                isDragging
-                  ? "border-indigo-500 bg-indigo-50"
-                  : "border-gray-300"
-              }`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleFileDrop(e, "video")}
-            >
-              <div className="flex flex-col items-center">
-                <IoVideocamOutline className="w-12 h-12 text-gray-400 mb-3" />
-                <p className="text-sm text-gray-500">
-                  Drag and drop a video here, or click to select file
-                </p>
-                <input
-                  type="file"
-                  accept="video/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    if (e.target.files?.[0]) {
-                      onDrop([e.target.files[0]], "video");
-                    }
-                  }}
-                  id="video-upload"
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    document.getElementById("video-upload")?.click()
-                  }
-                  className="mt-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-md hover:bg-indigo-100"
-                >
-                  Select Video
-                </button>
-              </div>
-            </div>
-            {video && (
-              <div className="relative">
-                <video
-                  src={video.preview}
-                  className="w-full rounded-lg"
-                  controls
-                />
-                <button
-                  type="button"
-                  onClick={removeVideo}
-                  className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-sm"
-                >
-                  <BiX
-                    size={16}
-                    className="text-gray-500"
-                  />
-                </button>
-              </div>
-            )}
+            <Controller
+              name="video"
+              control={control}
+              render={({ field }) => {
+                console.log("field", field);
+                console.log(
+                  "video",
+                  `${URL_IMAGE}/${video?.id}/${video?.filename_download}`
+                );
+                const videoLink =
+                  field.value &&
+                  typeof field.value === "object" &&
+                  field.value.id
+                    ? `${URL_IMAGE}/${field.value.id}/${field.value.filename_download}`
+                    : undefined;
+                return (
+                  <>
+                    <DragAndDropInput
+                      onChange={(file) => {
+                        field.onChange(file);
+                      }}
+                      multiple
+                      maxFiles={1}
+                      links={videoLink ? [videoLink] : []}
+                    />
+                  </>
+                );
+              }}
+            />
+          </div>
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-gray-700">
+              Mô tả
+            </label>
+            <MDEditor
+              value={description}
+              onChange={(value) => setValue("description", value || "")}
+            />
           </div>
         </div>
         <div className="flex justify-end gap-4 pt-4 border-t">
@@ -414,13 +693,13 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
             onClick={onClose}
             className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
           >
-            Cancel
+            Huỷ
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+            className="px-4 py-2 bg-[#1E88E5] text-white rounded-md hover:bg-[#1A73E8]"
           >
-            {room ? "Update Room" : "Add Room"}
+            {room ? "Cập nhật" : "Thêm"}
           </button>
         </div>
       </form>

@@ -5,11 +5,25 @@ import authReducer from "../redux/auth/store";
 import { refreshMiddleware } from "../utils/refreshMiddleware";
 import conversationReducer from "../redux/conversation/store";
 import messageReducer from "../redux/message/store";
+import roomReducer from "../redux/room/store";
+import roomDetailReducer from "../redux/room-detail/store";
+import roomTypeReducer from "../redux/room-type/store";
+import buildingReducer from "../redux/building/store";
+import amenitiesReducer from "../redux/amenities/store";
+import furnituresReducer from "../redux/furnitures/store";
+import servicesReducer from "../redux/services/store";
 
 const rootReducer = combineReducers({
   auth: authReducer,
   conversation: conversationReducer,
   message: messageReducer,
+  room: roomReducer,
+  roomDetail: roomDetailReducer,
+  roomType: roomTypeReducer,
+  building: buildingReducer,
+  amenities: amenitiesReducer,
+  furnitures: furnituresReducer,
+  services: servicesReducer,
 });
 const store = configureStore({
   reducer: rootReducer,

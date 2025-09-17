@@ -10,7 +10,7 @@ const ProtectedRoute = () => {
   // const { accessToken } = useSelector((state: RootState) => state.auth);
   const auth = localStorage.getItem("auth");
   const authParsed = JSON.parse(auth);
-  const accessToken = authParsed.accessToken;
+  const accessToken = authParsed?.accessToken;
   useEffect(() => {
     // if (!accessToken) {
 

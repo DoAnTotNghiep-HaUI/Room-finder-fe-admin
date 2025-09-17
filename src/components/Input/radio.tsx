@@ -1,77 +1,110 @@
-import { cn } from "@/utils/utils";
-import React, { forwardRef } from "react";
-export interface RadioProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  error?: string;
+import type React from "react";
+
+export interface RadioOption {
+  id?: string;
+  label: string;
+  value: string | number;
+  disabled?: boolean;
 }
-export interface RadioGroupProps {
+
+export interface ReusableRadioProps {
+  options: RadioOption[];
   name: string;
-  options: Array<{
-    label: string;
-    value: string;
-  }>;
-  value?: string;
-  onChange?: (value: string) => void;
-  error?: string;
-  direction?: "horizontal" | "vertical";
+  value?: string | number;
+  onChange: (value: any) => void;
+  layout?: "horizontal" | "vertical" | "grid";
+  gridCols?: 2 | 3 | 4 | 5 | 6;
+  className?: string;
+  title?: string;
+  required?: boolean;
+  disabled?: boolean;
 }
-export const Radio = forwardRef<HTMLInputElement, RadioProps>(
-  ({ label, error, className, ...props }, ref) => {
-    const radioClasses = cn(
-      "h-5 w-5 rounded-full border",
-      "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
-      "disabled:opacity-50 disabled:cursor-not-allowed",
-      {
-        "border-red-300 dark:border-red-600": error,
-        "border-gray-300 dark:border-gray-600": !error,
-      },
-      className
-    );
-    return (
-      <div className="flex items-center">
-        <input
-          ref={ref}
-          type="radio"
-          className={radioClasses}
-          {...props}
-        />
-        {label && (
-          <label className="ml-2 text-sm text-gray-700 dark:text-gray-200">
-            {label}
-          </label>
-        )}
-      </div>
-    );
-  }
-);
-export const RadioGroup: React.FC<RadioGroupProps> = ({
-  name,
+
+const Radio: React.FC<ReusableRadioProps> = ({
   options,
+  name,
   value,
   onChange,
-  error,
-  direction = "vertical",
+  layout = "vertical",
+  gridCols = 2,
+  className = "",
+  title,
+  required = false,
+  disabled = false,
 }) => {
+  const getLayoutClasses = () => {
+    switch (layout) {
+      case "horizontal":
+        return "flex flex-wrap gap-6";
+      case "grid":
+        return `grid gap-4 ${
+          gridCols === 2
+            ? "grid-cols-2"
+            : gridCols === 3
+            ? "grid-cols-3"
+            : gridCols === 4
+            ? "grid-cols-4"
+            : gridCols === 5
+            ? "grid-cols-5"
+            : "grid-cols-6"
+        }`;
+      case "vertical":
+      default:
+        return "flex flex-col gap-3";
+    }
+  };
+
   return (
-    <div
-      className={cn("flex", {
-        "flex-col space-y-2": direction === "vertical",
-        "space-x-4": direction === "horizontal",
-      })}
-    >
-      {options.map((option) => (
-        <Radio
-          key={option.value}
-          name={name}
-          label={option.label}
-          value={option.value}
-          checked={value === option.value}
-          onChange={(e) => onChange?.(e.target.value)}
-          error={error}
-        />
-      ))}
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+    <div className={`w-full ${className}`}>
+      {title && (
+        <label className="mb-3 block text-sm font-semibold text-gray-900">
+          {title}
+          {required && <span className="ml-1 text-red-500">*</span>}
+        </label>
+      )}
+
+      <div className={getLayoutClasses()}>
+        {options.map((option) => (
+          <label
+            key={option.id}
+            className={`group flex cursor-pointer items-center ${
+              disabled || option.disabled
+                ? "cursor-not-allowed opacity-50"
+                : "hover:bg-gray-50"
+            } ${
+              layout === "grid"
+                ? "rounded-lg border border-gray-200 p-3 transition-all duration-200"
+                : ""
+            } ${
+              value === option.value && layout === "grid"
+                ? "border-[#1E88E5] bg-blue-50"
+                : ""
+            } `}
+          >
+            <input
+              type="radio"
+              name={name}
+              value={option.value}
+              checked={value === option.value}
+              onChange={(e) => onChange(e.target.value)}
+              disabled={disabled || option.disabled}
+              className="h-4 w-4 border-gray-300 text-[#1E88E5] disabled:cursor-not-allowed disabled:opacity-50"
+            />
+            <span
+              className={`ml-3 text-sm font-medium ${
+                value === option.value ? "text-[#1E88E5]" : "text-gray-700"
+              } ${
+                disabled || option.disabled
+                  ? "text-gray-400"
+                  : "group-hover:text-[#1E88E5]"
+              } transition-colors duration-200`}
+            >
+              {option.label}
+            </span>
+          </label>
+        ))}
+      </div>
     </div>
   );
 };
+export default Radio;

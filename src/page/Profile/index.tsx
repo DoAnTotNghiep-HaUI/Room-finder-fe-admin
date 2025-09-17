@@ -1,14 +1,14 @@
 import { useState } from "react";
 
 import { Tab } from "@headlessui/react";
-import ProfileForm from "./profile-form";
+// import ProfileForm from "./profile-form";
 
 export default function LandlordProfilePage() {
   const [activeTab, setActiveTab] = useState(0);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* <Toaster position="top-right" /> */}
+      {/* <Toaster position="top-right" />
       <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">
           Landlord Profile
@@ -69,7 +69,7 @@ export default function LandlordProfilePage() {
             </Tab.Panel>
           </Tab.Panels>
         </Tab.Group>
-      </div>
+      </div> */}
     </div>
   );
 }

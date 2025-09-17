@@ -39,29 +39,29 @@ export default function MessengerPage() {
     dispatch(setConversationId(conversationId));
   };
 
-  const handleSendMessage = (content: string) => {
-    // if (!selectedConversationId || !content.trim()) return;
-    // const newMessage: Message = {
-    //   id: `msg-${Date.now()}`,
-    //   senderId: "current-user",
-    //   content,
-    //   timestamp: new Date(),
-    //   status: "sent",
-    //   type: "text",
-    // };
-    // setConversations((prev) =>
-    //   prev.map((conversation) =>
-    //     conversation.id === selectedConversationId
-    //       ? {
-    //           ...conversation,
-    //           messages: [...conversation.messages, newMessage],
-    //           lastMessage: content,
-    //           lastMessageTime: new Date(),
-    //         }
-    //       : conversation
-    //   )
-    // );
-  };
+  // const handleSendMessage = (content: string) => {
+  // if (!selectedConversationId || !content.trim()) return;
+  // const newMessage: Message = {
+  //   id: `msg-${Date.now()}`,
+  //   senderId: "current-user",
+  //   content,
+  //   timestamp: new Date(),
+  //   status: "sent",
+  //   type: "text",
+  // };
+  // setConversations((prev) =>
+  //   prev.map((conversation) =>
+  //     conversation.id === selectedConversationId
+  //       ? {
+  //           ...conversation,
+  //           messages: [...conversation.messages, newMessage],
+  //           lastMessage: content,
+  //           lastMessageTime: new Date(),
+  //         }
+  //       : conversation
+  //   )
+  // );
+  // };
 
   const toggleInfoPanel = () => {
     setShowInfoPanel(!showInfoPanel);
@@ -77,9 +77,8 @@ export default function MessengerPage() {
 
       {selectedConversation && partner ? (
         <ChatWindow
-          conversation={selectedConversation}
           participant={partner}
-          onSendMessage={handleSendMessage}
+          // onSendMessage={handleSendMessage}
           onToggleInfoPanel={toggleInfoPanel}
         />
       ) : (

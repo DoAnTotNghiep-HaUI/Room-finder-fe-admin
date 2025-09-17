@@ -1,6 +1,6 @@
 import type React from "react";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState, useMemo, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import {
   BiImage,
@@ -19,11 +19,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, AppState } from "@/redux";
 import { URL_IMAGE } from "@/constants";
 import { getMessagesByConversationId } from "@/redux/message/action";
+import FileUploadDropzone from "./input-file-upload";
+import { useChat } from "@/hooks/useChat";
+import { date } from "zod";
 
 interface ChatWindowProps {
-  conversation: IConversation;
   participant: IUser;
-  onSendMessage: (content: string) => void;
+  // onSendMessage: (content: string) => void;
   onToggleInfoPanel: () => void;
 }
 
@@ -32,9 +34,8 @@ interface MessageFormData {
 }
 
 export default function ChatWindow({
-  conversation,
   participant,
-  onSendMessage,
+  // onSendMessage,
   onToggleInfoPanel,
 }: ChatWindowProps) {
   const dispatch = useDispatch<AppDispatch>();
@@ -43,39 +44,144 @@ export default function ChatWindow({
   const { currentConversationId } = useSelector(
     (state: AppState) => state.conversation
   );
+  const {
+    hasMoreMessages,
+    loadingMore,
+    sendMediaMessage,
+    sendMessage,
+    messages,
+    groupMessagesByDate,
+    joinConversation,
+    loadMoreMessages,
+  } = useChat();
+  const [files, setFiles] = useState<File[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [scrollPosition, setScrollPosition] = useState<{
+    height: number;
+    messageId: string;
+  } | null>(null);
   const { register, handleSubmit, reset, watch } = useForm<MessageFormData>({
     defaultValues: {
       message: "",
     },
   });
+  const groupedMessages = useMemo(
+    () => groupMessagesByDate(messages),
+    [messages]
+  );
   useEffect(() => {
     dispatch(getMessagesByConversationId(currentConversationId));
   }, [currentConversationId]);
+  useEffect(() => {
+    if (currentConversationId) {
+      joinConversation(currentConversationId);
+    }
+  }, [currentConversationId, joinConversation]);
   const messageValue = watch("message");
 
-  const onSubmit = (data: MessageFormData) => {
-    if (data.message.trim()) {
-      onSendMessage(data.message);
-      reset();
-    }
-  };
+  // const onSubmit = (data: MessageFormData) => {
+  //   if (data.message.trim()) {
+  //     onSendMessage(data.message);
+  //     reset();
+  //   }
+  // };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(onSubmit)();
+      handleSubmit(handleSendMessage)();
     }
   };
-  console.log("message", messageList);
+  console.log("message", groupedMessages);
 
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messageList]);
+  const handleScroll = useCallback(async () => {
+    const container = messagesContainerRef.current;
+    if (!container || loadingMore || !hasMoreMessages) return;
 
+    // Lưu vị trí scroll và chiều cao của tin nhắn đầu tiên
+    if (container.scrollTop < 100 && messages.length > 0) {
+      const firstMessageElement = container.querySelector("[data-message-id]");
+      if (firstMessageElement) {
+        setScrollPosition({
+          height: firstMessageElement.clientHeight,
+          messageId: firstMessageElement.getAttribute("data-message-id") || "",
+        });
+      }
+
+      const result = await loadMoreMessages(currentConversationId, messages);
+      if (result) {
+        // Sử dụng setTimeout để đảm bảo DOM đã cập nhật
+        setTimeout(() => {
+          const container = messagesContainerRef.current;
+          if (!container) return;
+
+          // Tìm lại vị trí tin nhắn cũ
+          if (scrollPosition) {
+            const messageElement = container.querySelector(
+              `[data-message-id="${scrollPosition.messageId}"]`
+            );
+            if (messageElement) {
+              // Tính toán vị trí scroll mới
+              const newScrollTop =
+                messageElement.getBoundingClientRect().top -
+                container.getBoundingClientRect().top +
+                container.scrollTop -
+                scrollPosition.height * 2; // Giữ khoảng cách 2 tin nhắn
+
+              container.scrollTop = newScrollTop;
+            }
+          }
+          setScrollPosition(null);
+        }, 0);
+      }
+    }
+  }, [
+    currentConversationId,
+    loadMoreMessages,
+    loadingMore,
+    hasMoreMessages,
+    messages,
+    scrollPosition,
+  ]);
+  const handleSendMessage = async ({ message }: { message: string }) => {
+    if (!message.trim() && files.length === 0) return;
+    try {
+      if (files.length > 0) {
+        await sendMediaMessage(
+          currentConversationId,
+          participant?.id,
+          files,
+          message.trim()
+        );
+      } else {
+        await sendMessage(
+          currentConversationId,
+          message.trim(),
+          participant?.id
+        );
+      }
+
+      // Reset form only if successful
+      reset({ message: "" });
+      setFiles([]);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      // Optionally show error to user
+    }
+  };
+  const handleFilesChange = (newFiles: File[] | null) => {
+    if (newFiles) {
+      setFiles(newFiles);
+    } else {
+      setFiles([]);
+    }
+  };
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Chat header */}
@@ -97,7 +203,7 @@ export default function ChatWindow({
           </div>
           <div>
             <p className="font-medium">
-              {participant.first_name}" "{participant.last_name}
+              {participant.first_name} {participant.last_name}
             </p>
             <p className="text-xs text-gray-400">
               {/* {participant.isActive ? "Active now" : "Inactive"} */}
@@ -116,24 +222,47 @@ export default function ChatWindow({
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {messageList?.map((message) => (
-          <ChatMessage
-            key={message.id}
-            message={message}
-            isCurrentUser={message.sender === userInfo.id}
-            participant={participant}
-          />
+      <div
+        className="flex-1 overflow-y-auto p-4 space-y-2"
+        ref={messagesContainerRef}
+      >
+        {loadingMore && (
+          <div className="flex justify-center py-2">
+            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
+          </div>
+        )}
+        {Object.entries(groupedMessages).map(([date, messages]) => (
+          <div
+            key={date}
+            className="message-group"
+          >
+            {/* Header ngày */}
+            <div className="relative my-4 text-center">
+              <span className="rounded-xl text-sm text-gray-500 px-2 py-1">
+                {date}
+              </span>
+            </div>
+
+            {/* Danh sách tin nhắn */}
+            {messages?.map((message) => (
+              <ChatMessage
+                key={message.id}
+                message={message}
+                isCurrentUser={message.sender === userInfo.id}
+                participant={participant}
+              />
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
         ))}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Message input */}
       <form
-        onSubmit={handleSubmit(onSubmit)}
+        onSubmit={handleSubmit(handleSendMessage)}
         className="p-3 border-t border-gray-200 flex items-center gap-2"
       >
-        <div className="flex gap-1">
+        {/* <div className="flex gap-1">
           <button
             type="button"
             className="p-2 rounded-full hover:bg-gray-200"
@@ -146,9 +275,13 @@ export default function ChatWindow({
           >
             <BiImage size={20} />
           </button>
-        </div>
+        </div> */}
 
-        <div className="flex-1 relative items-center">
+        {/* <div className="flex-1 relative items-center"> */}
+        <FileUploadDropzone
+          onFilesChange={handleFilesChange}
+          files={files}
+        >
           <textarea
             {...register("message")}
             placeholder="Aa"
@@ -156,14 +289,15 @@ export default function ChatWindow({
             onKeyDown={handleKeyDown}
             rows={1}
           />
-        </div>
+        </FileUploadDropzone>
+        {/* </div> */}
 
         <button
           type="submit"
           className="p-2 rounded-full hover:bg-gray-200 disabled:opacity-50"
-          disabled={!messageValue.trim()}
+          // disabled={!messageValue.trim()}
         >
-          {messageValue.trim() ? (
+          {messageValue.trim() || files.length > 0 ? (
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"

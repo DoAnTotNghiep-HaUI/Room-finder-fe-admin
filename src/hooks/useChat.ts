@@ -214,8 +214,6 @@ export const useChat = () => {
 
         const initial = await fetchMessages(conversationId);
         setMessages(initial.reverse());
-
-        // reset unread locally and inform server via mark_as_read (server will also emit messages_read)
         dispatch(resetUnread(conversationId));
         socket.emit("mark_as_read", conversationId);
       }
@@ -363,17 +361,37 @@ export const useChat = () => {
 
   const groupMessagesByDate = (messages: IMessage[]) => {
     const grouped: Record<string, IMessage[]> = {};
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
     messages.forEach((message) => {
-      const date = message.date_created ? new Date(message.date_created) : null;
-      if (!date || isNaN(date.getTime())) return;
-      const dateKey = date.toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
+      if (!message.date_created) return;
+
+      const date = new Date(message.date_created);
+      if (isNaN(date.getTime())) return;
+
+      // normalize về 00:00 để so sánh ngày
+      const msgDate = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate()
+      );
+
+      let dateKey: string;
+      if (msgDate.getTime() === today.getTime()) {
+        dateKey = "Hôm nay";
+      } else {
+        const day = date.getDate();
+        const month = date.getMonth() + 1;
+        const year = date.getFullYear();
+        dateKey = `${day} Tháng ${month}, ${year}`;
+      }
+
       if (!grouped[dateKey]) grouped[dateKey] = [];
       grouped[dateKey].push(message);
     });
+
     return grouped;
   };
 

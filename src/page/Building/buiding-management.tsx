@@ -1,43 +1,25 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BiBuilding, BiSearch } from "react-icons/bi";
 import { IoAdd } from "react-icons/io5";
 import BuildingForm from "./building-form";
-import { Building } from "@/types/building";
-
+import { IBuilding } from "@/types/building";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, AppState } from "@/redux";
+import { getListBuilding } from "@/redux/building/action";
 const BuildingManagement = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { buildingList } = useSelector((state: AppState) => state.building);
+  const { userInfo } = useSelector((state: AppState) => state.auth);
+
   const [showForm, setShowForm] = useState(false);
-  const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(
+  const [selectedBuilding, setSelectedBuilding] = useState<IBuilding | null>(
     null
   );
   const [searchQuery, setSearchQuery] = useState("");
-  // Sample data
-  const buildings: Building[] = [
-    {
-      id: "1",
-      name: "Sunset Apartments",
-      address: "123 Main St, City",
-      description: "Modern apartment complex with 24/7 security",
-      totalRooms: 50,
-      defaultServices: {
-        electricity: 0.15,
-        water: 2.5,
-        internet: 30,
-      },
-    },
-    {
-      id: "2",
-      name: "Ocean View Complex",
-      address: "456 Beach Rd, Coast City",
-      description: "Luxury beachfront apartments",
-      totalRooms: 30,
-      defaultServices: {
-        electricity: 0.12,
-        water: 2.0,
-        internet: 35,
-      },
-    },
-  ];
+  useEffect(() => {
+    dispatch(getListBuilding(userInfo?.id));
+  }, [userInfo?.id]);
   return (
     <div className="">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -66,60 +48,56 @@ const BuildingManagement = () => {
         </button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {buildings
-          .filter(
-            (building) =>
-              building.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              building.address.toLowerCase().includes(searchQuery.toLowerCase())
-          )
-          .map((building) => (
-            <motion.div
-              key={building.id}
-              initial={{
-                opacity: 0,
-                y: 20,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              className="bg-white rounded-lg shadow-sm p-6"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-indigo-50 rounded-lg">
-                    <BiBuilding
-                      className="text-indigo-600"
-                      size={24}
-                    />
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900">
-                      {building.name}
-                    </h3>
-                    <p className="text-sm text-gray-500">{building.address}</p>
-                  </div>
+        {buildingList?.map((building) => (
+          <motion.div
+            key={building.id}
+            initial={{
+              opacity: 0,
+              y: 20,
+            }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            className="bg-white rounded-lg shadow-sm p-6"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-50 rounded-lg">
+                  <BiBuilding
+                    className="text-indigo-600"
+                    size={24}
+                  />
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-900">{building.name}</h3>
+                  <p className="text-sm text-gray-500">
+                    {" "}
+                    {building?.specific_address},{building?.ward},
+                    {building?.district?.name},{building?.city}
+                  </p>
                 </div>
               </div>
-              <div className="mt-4">
-                <p className="text-sm text-gray-600">{building.description}</p>
-                <div className="mt-4 flex items-center justify-between text-sm">
-                  <span className="text-gray-500">
-                    Total Rooms: {building.totalRooms}
-                  </span>
-                  <button
-                    onClick={() => {
-                      setSelectedBuilding(building);
-                      setShowForm(true);
-                    }}
-                    className="text-indigo-600 hover:text-indigo-800"
-                  >
-                    Edit Details
-                  </button>
-                </div>
+            </div>
+            <div className="mt-4">
+              <p className="text-sm text-gray-600">{building.description}</p>
+              <div className="mt-4 flex items-center justify-between text-sm">
+                <span className="text-gray-500">
+                  Total Rooms: {building.total_rooms}
+                </span>
+                <button
+                  onClick={() => {
+                    setSelectedBuilding(building);
+                    setShowForm(true);
+                  }}
+                  className="text-indigo-600 hover:text-indigo-800"
+                >
+                  Edit Details
+                </button>
               </div>
-            </motion.div>
-          ))}
+            </div>
+          </motion.div>
+        ))}
       </div>
       <AnimatePresence>
         {showForm && (

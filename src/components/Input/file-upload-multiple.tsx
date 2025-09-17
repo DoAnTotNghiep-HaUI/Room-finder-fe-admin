@@ -1,296 +1,378 @@
-import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useController, Control } from "react-hook-form";
-import { twMerge } from "tailwind-merge";
-import { BiX } from "react-icons/bi";
-import { MdOutlineFileUpload } from "react-icons/md";
-import { IoAlertCircleOutline, IoImageOutline } from "react-icons/io5";
-import {
-  DndContext,
-  closestCenter,
-  MouseSensor,
-  TouchSensor,
-  DragOverlay,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  rectSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { restrictToWindowEdges } from "@dnd-kit/modifiers";
-import { LuGrip } from "react-icons/lu";
-interface FileUploadProps {
-  name: string;
-  control: Control<any>;
-  defaultImageUrls?: string[];
+import React, { useEffect, useState } from "react";
+import { FaCloudUploadAlt, FaTrashRestoreAlt } from "react-icons/fa";
+import { FaLink } from "react-icons/fa6";
+import { IoCloseCircleOutline } from "react-icons/io5";
+import PreviewVideo from "./previewVideo";
+import { REGEX_URL, URL_IMAGE } from "@/constants";
+
+const videoExtensions = [".mp4", ".mov", ".avi", ".mkv", ".webm"];
+const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".svg"];
+const audioExtensions = [".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a"];
+
+interface FileItem {
+  id: string;
+  type: "file" | "url";
+  url: string;
+  file?: File;
+  isVideo?: boolean;
+  isImage?: boolean;
+  isAudio?: boolean;
+  isPDF?: boolean;
+  isDOCX?: boolean;
+  // isServerUrl?: boolean; // Thêm để phân biệt link server
+}
+
+interface DragAndDropInputProps {
+  links?: string[]; // link từ server (edit)
+  onChange?: (files: (File | string)[]) => void;
+  onRemove?: (index: number) => void;
+  inputAccept?: string;
   multiple?: boolean;
-  onDelete?: (index: number) => void;
-  onChange?: (files: File[]) => void;
-  maxSize?: number;
-  accept?: string[];
-  className?: string;
   maxFiles?: number;
 }
-interface ImageItemProps {
-  src: string;
-  id: string;
-  onDelete: () => void;
-}
-const SortableImage = ({ src, id, onDelete }: ImageItemProps) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id,
-  });
-  const style = {
-    transform: transform
-      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-      : undefined,
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-  return (
-    <motion.div
-      ref={setNodeRef}
-      style={style}
-      className="relative group aspect-square"
-    >
-      <img
-        src={src}
-        alt="Uploaded preview"
-        className="w-full h-full object-cover rounded-lg border border-gray-200"
-      />
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <BiX size={14} />
-      </button>
-      <button
-        {...attributes}
-        {...listeners}
-        className="absolute bottom-2 right-2 p-1 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-move"
-      >
-        <LuGrip
-          size={14}
-          className="text-gray-500"
-        />
-      </button>
-    </motion.div>
-  );
-};
-const FileUploadMultiple = ({
-  name,
-  control,
-  defaultImageUrls = [],
-  multiple = false,
-  onDelete,
+
+function DragAndDropInput({
+  links = [],
   onChange,
-  maxSize = 5 * 1024 * 1024,
-  accept = [".png", ".jpg", ".jpeg", ".gif"],
-  className,
+  onRemove,
+  inputAccept,
+  multiple = false,
   maxFiles = 10,
-}: FileUploadProps) => {
-  const [error, setError] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 10,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200,
-        tolerance: 5,
-      },
-    })
-  );
-  const {
-    field: { value, onChange: fieldOnChange },
-  } = useController({
-    name,
-    control,
-    defaultValue: defaultImageUrls,
-  });
-  const handleDragStart = (event: DragEndEvent) => {
-    setDraggedId(event.active.id as string);
-  };
-  const handleDragEnd = (event: DragEndEvent) => {
-    setDraggedId(null);
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const oldIndex = value.findIndex((item: string) => item === active.id);
-      const newIndex = value.findIndex((item: string) => item === over.id);
-      const newValue = arrayMove(value, oldIndex, newIndex);
-      fieldOnChange(newValue);
+}: DragAndDropInputProps) {
+  const [fileItems, setFileItems] = useState<FileItem[]>([]);
+  console.log("links", links);
+
+  useEffect(() => {
+    if (links.length > 0) {
+      // Nếu là link server (edit), tạo preview đúng link server
+      const urlItems: FileItem[] = links.map((link) => ({
+        id: Math.random().toString(36).substr(2, 9),
+        type: "url",
+        url: link,
+        isServerUrl: true,
+        isVideo:
+          videoExtensions.some((ext) => link.toLowerCase().endsWith(ext)) ||
+          link.includes("video"),
+        isImage: imageExtensions.some((ext) =>
+          link.toLowerCase().endsWith(ext)
+        ),
+        isAudio: audioExtensions.some((ext) =>
+          link.toLowerCase().endsWith(ext)
+        ),
+        isPDF: link.endsWith(".pdf"),
+        isDOCX: link.endsWith(".docx"),
+      }));
+      setFileItems(urlItems);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(links)]); // Chỉ chạy khi links thực sự thay đổi
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const files = event.dataTransfer.files;
+    handleFileChange(files);
   };
-  const handleFiles = (files: FileList | File[]) => {
-    setError(null);
-    const fileArray = Array.from(files);
-    if (multiple && value.length + fileArray.length > maxFiles) {
-      setError(`Maximum ${maxFiles} files allowed`);
-      return;
-    }
-    const invalidFile = fileArray.find((file) => {
-      if (!accept.some((type) => file.name.toLowerCase().endsWith(type))) {
-        setError("Invalid file type");
-        return true;
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const handleFileChange = (files: FileList) => {
+    if (files && files.length > 0) {
+      const newFileItems: FileItem[] = [];
+
+      for (let i = 0; i < files.length; i++) {
+        if (fileItems.length + newFileItems.length >= maxFiles) break;
+
+        const file = files[i];
+        const url = URL.createObjectURL(file);
+
+        newFileItems.push({
+          id: Math.random().toString(36).substr(2, 9),
+          type: "file",
+          url,
+          file,
+          isVideo: file.type.startsWith("video/"),
+          isAudio: file.type.startsWith("audio/"),
+          isImage: file.type.startsWith("image/"),
+          isPDF: file.type === "application/pdf",
+          isDOCX: file.name.endsWith(".docx"),
+          // isServerUrl: false,
+        });
       }
-      if (file.size > maxSize) {
-        setError(
-          `File size should be less than ${Math.round(maxSize / 1024 / 1024)}MB`
+
+      const updatedItems = multiple
+        ? [...fileItems, ...newFileItems]
+        : newFileItems;
+      setFileItems(updatedItems);
+
+      // Gọi callback với cả files và URLs
+      if (onChange) {
+        const filesToSend = updatedItems.map((item) =>
+          item.type === "file" ? item.file! : item.url
         );
-        return true;
+        onChange(filesToSend);
       }
-      return false;
-    });
-    if (invalidFile) return;
-    fileArray.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        if (multiple) {
-          fieldOnChange([...value, result]);
-        } else {
-          fieldOnChange([result]);
+    }
+  };
+
+  const handleClick = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.multiple = multiple;
+    input.accept =
+      inputAccept || "image/*,video/*,audio/*,application/pdf,.docx";
+    input.onchange = (event: any) => {
+      const files = event.target.files;
+      handleFileChange(files);
+    };
+    input.click();
+  };
+
+  const handleRemove = (index: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const newItems = fileItems.filter((_, i) => i !== index);
+    setFileItems(newItems);
+
+    // Gọi callback với items còn lại
+    if (onChange) {
+      const filesToSend = newItems.map((item) =>
+        item.type === "file" ? item.file! : item.url
+      );
+      onChange(filesToSend);
+    }
+
+    onRemove?.(index);
+  };
+
+  const [showPopover, setShowPopover] = useState(false);
+  const [popoverInput, setPopoverInput] = useState("");
+
+  const handleAddLink = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && popoverInput.trim()) {
+      const url = popoverInput.trim();
+      if (REGEX_URL.test(url)) {
+        const newItem: FileItem = {
+          id: Math.random().toString(36).substr(2, 9),
+          type: "url",
+          url,
+          // isServerUrl: false,
+          isVideo:
+            videoExtensions.some((ext) => url.toLowerCase().endsWith(ext)) ||
+            url.includes("video"),
+          isImage: imageExtensions.some((ext) =>
+            url.toLowerCase().endsWith(ext)
+          ),
+          isAudio: audioExtensions.some((ext) =>
+            url.toLowerCase().endsWith(ext)
+          ),
+          isPDF: url.endsWith(".pdf"),
+          isDOCX: url.endsWith(".docx"),
+        };
+
+        const updatedItems = multiple ? [...fileItems, newItem] : [newItem];
+        setFileItems(updatedItems);
+
+        if (onChange) {
+          const filesToSend = updatedItems.map((item) =>
+            item.type === "file" ? item.file! : item.url
+          );
+          onChange(filesToSend);
         }
-        onChange?.(multiple ? fileArray : [fileArray[0]]);
-      };
-      reader.readAsDataURL(file);
-    });
+
+        setPopoverInput("");
+        setShowPopover(false);
+      }
+    }
   };
-  const handleDelete = (index: number) => {
-    const newValue = value.filter((_: string, i: number) => i !== index);
-    fieldOnChange(newValue);
-    onDelete?.(index);
-  };
-  const dropzoneClassName = twMerge(
-    "relative flex flex-col items-center justify-center w-full p-6 border-2 border-dashed rounded-lg transition-colors",
-    isDragging ? "border-indigo-500 bg-indigo-50" : "border-gray-300",
-    error && "border-red-500",
-    className
-  );
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      modifiers={[restrictToWindowEdges]}
-    >
-      <div className="space-y-4">
-        <div
-          className={dropzoneClassName}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragging(true);
-          }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setIsDragging(false);
-            handleFiles(e.dataTransfer.files);
-          }}
-        >
-          <input
-            type="file"
-            accept={accept.join(",")}
-            onChange={(e) => {
-              if (e.target.files) {
-                handleFiles(e.target.files);
-              }
-            }}
-            multiple={multiple}
-            className="hidden"
-            id={`file-upload-${name}`}
-          />
-          <label
-            htmlFor={`file-upload-${name}`}
-            className="flex flex-col items-center text-center cursor-pointer"
+
+  const renderPreview = (item: FileItem, index: number) => {
+    const previewUrl = item.url
+      ? item.url
+      : item.type === "file"
+      ? item.url
+      : item.url;
+
+    if (item.isVideo) {
+      return (
+        <PreviewVideo
+          preview={previewUrl}
+          src={previewUrl}
+        />
+      );
+    } else if (item.isPDF) {
+      return (
+        <iframe
+          src={previewUrl}
+          className="w-full h-full border-none"
+          title={`PDF Preview ${index}`}
+        />
+      );
+    } else if (item.isDOCX) {
+      return (
+        <iframe
+          src={`https://docs.google.com/gview?url=${previewUrl}&embedded=true`}
+          className="w-full h-full border-none"
+          title={`DOCX Preview ${index}`}
+        />
+      );
+    } else if (item.isImage) {
+      return (
+        <img
+          src={previewUrl}
+          alt={`Preview ${index}`}
+          className="w-full h-full object-cover"
+        />
+      );
+    } else if (item.isAudio) {
+      return (
+        <audio
+          src={previewUrl}
+          controls
+          className="w-full"
+        />
+      );
+    } else {
+      return (
+        <div className="w-full h-full flex items-center justify-center">
+          <a
+            href={previewUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="max-w-full border border-gray-400 rounded px-4 py-2 flex items-center gap-2 bg-white"
+            onClick={(e) => e.stopPropagation()}
           >
-            {isDragging ? (
-              <MdOutlineFileUpload className="w-12 h-12 text-indigo-500 mb-4" />
-            ) : (
-              <IoImageOutline className="w-12 h-12 text-gray-400 mb-4" />
-            )}
-            <p className="text-sm text-gray-600">
-              {isDragging
-                ? "Drop files here"
-                : `Drag & drop ${
-                    multiple ? "images" : "an image"
-                  }, or click to select`}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              PNG, JPG, GIF up to {Math.round(maxSize / 1024 / 1024)}MB
-              {multiple && ` (Max ${maxFiles} files)`}
-            </p>
-          </label>
+            <FaLink size={16} />
+            <span className="truncate">{previewUrl}</span>
+          </a>
         </div>
-        {value?.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            <SortableContext
-              items={value}
-              strategy={rectSortingStrategy}
+      );
+    }
+  };
+
+  return (
+    <div className="w-full">
+      <div
+        className={`
+          w-full min-h-[200px] border-2 border-dashed rounded-lg
+          flex flex-wrap items-center justify-center cursor-pointer transition-colors
+          overflow-hidden bg-white p-4 gap-4
+          hover:bg-blue-50 hover:border-blue-500
+          ${fileItems.length === 0 ? "aspect-video max-h-[400px]" : ""}
+        `}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        // onClick={() => fileItems.length === 0 && handleClick()}
+      >
+        {fileItems.map((item, index) => (
+          <div
+            key={item.id}
+            className="relative w-32 h-32 bg-gray-100 rounded-lg overflow-hidden group"
+          >
+            <div className="w-full h-full">{renderPreview(item, index)}</div>
+            <button
+              type="button"
+              className="absolute top-1 right-1 p-1 rounded-full bg-white hover:bg-red-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+              onClick={(e) => handleRemove(index, e)}
             >
-              {value.map((src: string, index: number) => (
-                <SortableImage
-                  key={src}
-                  id={src}
-                  src={src}
-                  onDelete={() => handleDelete(index)}
-                />
-              ))}
-            </SortableContext>
+              <FaTrashRestoreAlt size={14} />
+            </button>
+          </div>
+        ))}
+
+        {fileItems.length < maxFiles && (
+          <div
+            className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50"
+            onClick={handleClick}
+          >
+            <FaCloudUploadAlt
+              size={24}
+              className="text-gray-400 mb-2"
+            />
+            <span className="text-sm text-gray-500 text-center">Thêm tệp</span>
           </div>
         )}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{
-                opacity: 0,
-                y: -10,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              exit={{
-                opacity: 0,
-                y: -10,
-              }}
-              className="flex items-center gap-2 text-red-500 text-sm"
-            >
-              <IoAlertCircleOutline size={16} />
-              <span>{error}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <DragOverlay>
-          {draggedId && (
-            <img
-              src={draggedId}
-              alt="Dragging preview"
-              className="w-32 h-32 object-cover rounded-lg shadow-lg opacity-80"
-            />
-          )}
-        </DragOverlay>
+
+        {fileItems.length === 0 && (
+          <div className="flex flex-col items-center justify-center w-full">
+            <div className="flex flex-row justify-center gap-4 mb-4">
+              <button
+                type="button"
+                className="p-3 rounded-full bg-gray-200 hover:bg-gray-300"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClick();
+                }}
+              >
+                <FaCloudUploadAlt
+                  size={24}
+                  color="grey"
+                />
+              </button>
+              <button
+                type="button"
+                className="p-3 rounded-full bg-gray-200 hover:bg-gray-300"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPopover(true);
+                }}
+              >
+                <FaLink
+                  size={24}
+                  color="grey"
+                />
+              </button>
+            </div>
+            <div className="text-lg text-gray-500 mb-1 text-center">
+              Drag and drop files here, or click to select files
+            </div>
+            <div className="text-sm text-gray-400 text-center">
+              Supported: Image, Video, PDF, DOCX, Audio
+              {multiple && ` (Max ${maxFiles} files)`}
+            </div>
+          </div>
+        )}
       </div>
-    </DndContext>
+
+      {showPopover && (
+        <div className="absolute z-50 bg-white border border-gray-300 rounded shadow-md p-4 mt-2 left-1/2 -translate-x-1/2 w-72">
+          <input
+            type="text"
+            value={popoverInput}
+            onChange={(e) => setPopoverInput(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 mb-2"
+            placeholder="Paste link and press Enter"
+            onKeyDown={handleAddLink}
+            autoFocus
+          />
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-500">Press Enter to add</span>
+            <button
+              type="button"
+              className="text-gray-400 hover:text-gray-700"
+              onClick={() => {
+                setShowPopover(false);
+                setPopoverInput("");
+              }}
+            >
+              <IoCloseCircleOutline size={20} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {fileItems.length > 0 && (
+        <div className="mt-2 text-sm text-gray-500">
+          {fileItems.length} tệp{fileItems.length !== 1} đã chọn
+          {maxFiles && ` (Tối đa ${maxFiles})`}
+        </div>
+      )}
+    </div>
   );
-};
-export default FileUploadMultiple;
+}
+
+export { DragAndDropInput };

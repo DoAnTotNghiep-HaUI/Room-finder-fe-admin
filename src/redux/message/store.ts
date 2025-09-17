@@ -1,5 +1,3 @@
-import { RoomParams } from "@/types/room";
-import type { PayloadAction } from "@reduxjs/toolkit";
 import { createSlice } from "@reduxjs/toolkit";
 import { MessageState } from "@/types/chat";
 import { getMessagesByConversationId } from "./action";

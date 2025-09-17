@@ -6,9 +6,11 @@ import { Disclosure } from "@headlessui/react";
 import { LuChevronDown } from "react-icons/lu";
 import { IUser } from "@/types/user";
 import { URL_IMAGE } from "@/constants";
+import { IFile } from "@/types/file";
 
 interface ChatInfoPanelProps {
   user: IUser;
+  // attachments: IFile[]
 }
 
 export default function ChatInfoPanel({ user }: ChatInfoPanelProps) {
