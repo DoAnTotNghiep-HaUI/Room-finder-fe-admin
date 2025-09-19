@@ -19,7 +19,7 @@ interface FileItem {
   isAudio?: boolean;
   isPDF?: boolean;
   isDOCX?: boolean;
-  // isServerUrl?: boolean; // Thêm để phân biệt link server
+  isServerUrl?: boolean; // Thêm để phân biệt link server
 }
 
 interface DragAndDropInputProps {
@@ -39,8 +39,9 @@ function DragAndDropInput({
   multiple = false,
   maxFiles = 10,
 }: DragAndDropInputProps) {
+  // Chỉ khởi tạo fileItems từ links khi mount hoặc khi links thực sự thay đổi (edit)
   const [fileItems, setFileItems] = useState<FileItem[]>([]);
-  console.log("links", links);
+  // const [externalLink, setExternalLink] = useState(links);
 
   useEffect(() => {
     if (links.length > 0) {
@@ -99,7 +100,7 @@ function DragAndDropInput({
           isImage: file.type.startsWith("image/"),
           isPDF: file.type === "application/pdf",
           isDOCX: file.name.endsWith(".docx"),
-          // isServerUrl: false,
+          isServerUrl: false,
         });
       }
 
@@ -155,12 +156,14 @@ function DragAndDropInput({
   const handleAddLink = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && popoverInput.trim()) {
       const url = popoverInput.trim();
+      console.log("url");
+
       if (REGEX_URL.test(url)) {
         const newItem: FileItem = {
           id: Math.random().toString(36).substr(2, 9),
           type: "url",
           url,
-          // isServerUrl: false,
+          isServerUrl: false,
           isVideo:
             videoExtensions.some((ext) => url.toLowerCase().endsWith(ext)) ||
             url.includes("video"),
@@ -191,11 +194,12 @@ function DragAndDropInput({
   };
 
   const renderPreview = (item: FileItem, index: number) => {
-    const previewUrl = item.url
-      ? item.url
-      : item.type === "file"
-      ? item.url
-      : item.url;
+    const previewUrl =
+      item.isServerUrl && item.url
+        ? item.url
+        : item.type === "file"
+        ? item.url
+        : item.url;
 
     if (item.isVideo) {
       return (
@@ -220,7 +224,7 @@ function DragAndDropInput({
           title={`DOCX Preview ${index}`}
         />
       );
-    } else if (item.isImage) {
+    } else if (item.isImage || item.url.startsWith("blob:")) {
       return (
         <img
           src={previewUrl}
@@ -293,11 +297,11 @@ function DragAndDropInput({
               size={24}
               className="text-gray-400 mb-2"
             />
-            <span className="text-sm text-gray-500 text-center">Thêm tệp</span>
+            <span className="text-sm text-gray-500 text-center">Add File</span>
           </div>
         )}
 
-        {fileItems.length === 0 && (
+        {/* {fileItems.length === 0 && (
           <div className="flex flex-col items-center justify-center w-full">
             <div className="flex flex-row justify-center gap-4 mb-4">
               <button
@@ -335,7 +339,7 @@ function DragAndDropInput({
               {multiple && ` (Max ${maxFiles} files)`}
             </div>
           </div>
-        )}
+        )} */}
       </div>
 
       {showPopover && (
@@ -367,8 +371,8 @@ function DragAndDropInput({
 
       {fileItems.length > 0 && (
         <div className="mt-2 text-sm text-gray-500">
-          {fileItems.length} tệp{fileItems.length !== 1} đã chọn
-          {maxFiles && ` (Tối đa ${maxFiles})`}
+          {fileItems.length} file{fileItems.length !== 1 ? "s" : ""} selected
+          {maxFiles && ` (Max ${maxFiles})`}
         </div>
       )}
     </div>

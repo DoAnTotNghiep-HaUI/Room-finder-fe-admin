@@ -17,6 +17,7 @@ export interface RoomParams {
   };
 }
 export interface SearchParams {
+  building?: string;
   city?: string;
   specific_address: string;
   ward?: string;
@@ -41,7 +42,7 @@ export interface IRoom {
   title: string;
   room_type: IRoomType;
   deposit: number;
-  services: IService[];
+  services: IService[] | any[];
   furnitures: IFurniture[] | string[];
   amenities: IAmenity[] | string[];
   video: IFile;

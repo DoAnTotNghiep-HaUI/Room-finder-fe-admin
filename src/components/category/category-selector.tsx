@@ -4,14 +4,20 @@ import { useEffect, useState } from "react";
 import { UseFormSetValue, UseFormWatch } from "react-hook-form";
 
 interface Category {
-  id: string;
+  id: string | number;
   name: string;
-  icon: IFile;
+  icon?: IFile;
+  room_category_id: string | number;
 }
 
 interface ReusableCategorySelectorProps {
   categories: Category[];
-  onSelectionChange?: (selectedCategories: string[]) => void;
+  onSelectionChange?: (
+    selectedCategories: {
+      room_category_id: string | number;
+      id: string | number;
+    }[]
+  ) => void;
   maxSelections?: number;
   cols?: number;
   setValue?: UseFormSetValue<any>;
@@ -29,38 +35,48 @@ export default function ReusableCategorySelector({
   name,
 }: ReusableCategorySelectorProps) {
   const formValue = watch ? watch(name) : undefined;
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(
-    formValue || []
-  );
+  const [selectedCategories, setSelectedCategories] = useState<
+    { room_category_id: string | number; id: string | number }[]
+  >([]);
 
+  // ✅ Đồng bộ dữ liệu khi edit (update mode)
   useEffect(() => {
-    if (formValue !== undefined) {
+    if (formValue && Array.isArray(formValue)) {
       setSelectedCategories(formValue);
     }
   }, [formValue]);
 
-  const toggleCategory = (categoryId: string) => {
-    let newSelection: string[];
+  const toggleCategory = (category: Category) => {
+    let newSelection: {
+      id: string | number;
+      room_category_id: string | number;
+    }[];
+    console.log("Category clicked:", selectedCategories);
+    console.log("formValue", formValue);
 
-    if (selectedCategories.includes(categoryId)) {
-      // Bỏ chọn
-      newSelection = selectedCategories.filter((id) => id !== categoryId);
+    const exists = selectedCategories?.find((c) => c?.id === category?.id);
+
+    if (exists) {
+      newSelection = selectedCategories?.filter((c) => c?.id !== category?.id);
     } else {
       if (maxSelections && selectedCategories.length >= maxSelections) {
         return;
       }
-      newSelection = [...selectedCategories, categoryId];
-    }
+      console.log("Adding category:", category);
 
-    // Cập nhật local state
+      newSelection = [
+        ...selectedCategories,
+        { id: category?.id, room_category_id: category?.room_category_id },
+      ];
+    }
+    console.log("New selection:", newSelection);
+
     setSelectedCategories(newSelection);
 
-    // Cập nhật form value nếu có setValue
     if (setValue) {
       setValue(name, newSelection);
     }
 
-    // Gọi callback nếu có
     onSelectionChange?.(newSelection);
   };
 
@@ -68,7 +84,9 @@ export default function ReusableCategorySelector({
     <div className="mx-auto w-full max-w-4xl">
       <div className={`grid grid-cols-2 gap-3 md:grid-cols-${cols}`}>
         {categories?.map((category) => {
-          const isSelected = selectedCategories.includes(category.id);
+          const isSelected = selectedCategories.some(
+            (c) => c?.id === category?.id
+          );
 
           const isDisabled =
             !isSelected &&
@@ -79,7 +97,7 @@ export default function ReusableCategorySelector({
             <button
               type="button"
               key={category.id}
-              onClick={() => toggleCategory(category.id)}
+              onClick={() => toggleCategory(category)}
               disabled={isDisabled}
               className={`flex items-center justify-center gap-3 rounded-full border-2 p-4 transition-all duration-200 ${
                 isSelected

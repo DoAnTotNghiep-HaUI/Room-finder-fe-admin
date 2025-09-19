@@ -2,7 +2,7 @@ import { RoomParams } from "@/types/room";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createSlice } from "@reduxjs/toolkit";
 import {
-  getListRoom,
+  // getListRoom,
   getListRoomByLandlord,
   getRoomCheapPrice,
   getRoomNewPost,
@@ -64,7 +64,17 @@ const roomSlice = createSlice({
       //   };
       // })
       .addCase(getListRoomByLandlord.fulfilled, (state, action) => {
-        state.roomList = action.payload;
+        state.roomList = action.payload.data;
+        const totalItems = action.payload.total;
+        const itemsPerPage = action.payload.limit || 10;
+        const totalPages = Math.ceil(Number(totalItems) / itemsPerPage);
+
+        state.pagination = {
+          currentPage: action.payload.page || 1,
+          totalPages,
+          totalItems: Number(totalItems),
+          itemsPerPage,
+        };
         console.log("action.payload", action.payload);
       })
       .addCase(getRoomNewPost.pending, (state) => {

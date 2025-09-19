@@ -67,8 +67,7 @@ export default function AdminRoomCard({
   className = "",
 }: AdminRoomCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  // const [showForm, setShowForm] = useState(false);
-
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   //   const statusInfo = statusConfig[room?.status];
   //   const StatusIcon = statusInfo?.icon;
 
@@ -218,60 +217,51 @@ export default function AdminRoomCard({
               )}
 
               {onDelete && (
-                <button
-                  onClick={() => onDelete(room.id)}
-                  style={{
-                    backgroundColor: "#FEE2E2 !important",
-                    color: "#991B1B !important",
-                    border: "2px solid #EF4444 !important",
-                  }}
-                  className="flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium rounded-md transition-opacity duration-200"
-                >
-                  <FaTrash className="w-4 h-4" />
-                  Xóa
-                </button>
+                <>
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    style={{
+                      backgroundColor: "#FEE2E2 !important",
+                      color: "#991B1B !important",
+                      border: "2px solid #EF4444 !important",
+                    }}
+                    className="flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium rounded-md transition-opacity duration-200"
+                  >
+                    <FaTrash className="w-4 h-4" />
+                    Xóa
+                  </button>
+                </>
               )}
             </div>
           </div>
         </div>
       </motion.div>
-      {/* <AnimatePresence>
-        {showForm && (
-          <motion.div
-            initial={{
-              opacity: 0,
-            }}
-            animate={{
-              opacity: 1,
-            }}
-            exit={{
-              opacity: 0,
-            }}
-            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{
-                scale: 0.95,
-              }}
-              animate={{
-                scale: 1,
-              }}
-              exit={{
-                scale: 0.95,
-              }}
-              className="bg-white rounded-lg shadow-xl w-full max-w-4xl overflow-hidden"
-            >
-              <RoomForm
-                room={selectedRoom}
-                onClose={() => {
-                  setShowForm(false);
-                  setSelectedRoom(null);
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-xs">
+            <h3 className="text-lg font-semibold mb-4 text-center">
+              Bạn có chắc chắn muốn xoá phòng này?
+            </h3>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 rounded-md border border-gray-300 bg-gray-50 hover:bg-gray-100"
+              >
+                Huỷ
+              </button>
+              <button
+                onClick={() => {
+                  onDelete(room.id);
+                  setShowDeleteConfirm(false);
                 }}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence> */}
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+              >
+                Xoá
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

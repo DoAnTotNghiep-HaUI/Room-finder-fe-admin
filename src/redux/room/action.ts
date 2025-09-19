@@ -1,122 +1,50 @@
 import { IRoom, SearchParams } from "@/types/room";
 import directus from "@/utils/directus";
-import { aggregate, readItem, readItems } from "@directus/sdk";
+import {
+  aggregate,
+  createItem,
+  deleteItem,
+  readItem,
+  readItems,
+  updateItem,
+} from "@directus/sdk";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
-export const getListRoom = createAsyncThunk(
-  "room/getListRoom",
-  async (params?: SearchParams & { page?: number; limit?: number }) => {
+export const getListRoomByLandlord = createAsyncThunk(
+  "room/getListRoomByLandlord",
+  async (
+    params?: SearchParams & {
+      page?: number;
+      limit?: number;
+      currentUserId?: string;
+    }
+  ) => {
     try {
-      const filter: any = { _and: [] };
-      const sort: any = [];
-      if (params?.sortBy) {
-        sort.push(params.sortBy);
-      }
+      const filter: any = {
+        _and: [
+          {
+            building: {
+              landlord: {
+                _eq: params?.currentUserId,
+              },
+            },
+          },
+        ],
+      };
+      // ...
       if (params?.title) {
-        filter._and.push({ title: { _contains: params.title } });
+        filter._and.push({ title: { _icontains: params.title } });
       }
-      if (params?.city) {
-        filter._and.push({ building: { city: { _eq: params.city } } });
+      if (params?.building) {
+        filter._and.push({ building: { _eq: params.building } });
       }
-
-      if (params?.district) {
-        filter._and.push({ building: { district: { _eq: params.district } } });
-      }
-
-      if (params?.roomType) {
-        filter._and.push({ room_type: { _eq: params.roomType[0] } });
-      }
-
-      if (params?.price) {
-        // const priceFilter: any = {};
-        // if (params.priceMin !== undefined) priceFilter._gte = params.priceMin;
-        // if (params.priceMax !== undefined) priceFilter._lte = params.priceMax;
-        filter._and.push({
-          room_price: {
-            _gte: params.price[0] * 1000000,
-            _lte: params.price[1] * 1000000,
-          },
-        });
-      }
-      if (params?.area) {
-        filter._and.push({
-          acreage: {
-            _gte: params.area[0],
-            _lte: params.area[1],
-          },
-        });
-      }
-      if (params?.amenities && params.amenities.length > 0) {
-        const amenityFilters = params.amenities.map((id) => ({
-          amenities: {
-            _some: {
-              amenities_id: { _eq: id },
-            },
-          },
-        }));
-        filter._and.push(...amenityFilters);
-      }
-
-      if (params?.furnitures && params.furnitures.length > 0) {
-        const furnitureFilters = params.furnitures.map((id) => ({
-          furnitures: {
-            _some: {
-              furnitures_id: { _eq: id },
-            },
-          },
-        }));
-        filter._and.push(...furnitureFilters);
-      }
-      // Nếu không có filter nào, xóa _and để lấy tất cả
       if (filter._and.length === 0) {
         delete filter._and;
       }
       const page = params?.page || 1;
       const limit = params?.limit || 10;
       const offset = (page - 1) * limit;
-      const response: any = await directus.request(
-        readItems("room", {
-          sort,
-          filter,
-          fields: [
-            "*",
-            "room_type.*",
-            "building.*",
-            "building.landlord.*",
-            "building.district.*",
-            "photos.*",
-            "amenities.*",
-            "furnitures.*",
-          ],
-          limit,
-          offset,
-          // meta: "total_count",
-        })
-      );
-      const total_count = await directus.request(
-        aggregate("room", {
-          aggregate: { count: "*" },
-        })
-      );
-      console.log("room list data", response);
-
-      return {
-        data: response,
-        total: total_count[0]?.count || 0,
-        page,
-        limit,
-      };
-    } catch (error) {
-      //   return rejectWithValue(error);
-      console.log("error", error);
-    }
-  }
-);
-export const getListRoomByLandlord = createAsyncThunk(
-  "room/getListRoomByLandlord",
-  async (currentUserId: string) => {
-    try {
-      const rawResponse = await directus.request(
+      const rawResponse = await directus.request<any>(
         readItems("room", {
           fields: [
             "*",
@@ -136,36 +64,109 @@ export const getListRoomByLandlord = createAsyncThunk(
             "amenities.amenities_id.*",
             "amenities.amenities_id.icon.*",
           ],
-          filter: {
-            building: {
-              landlord: {
-                _eq: currentUserId,
-              },
-            },
-          },
+          filter,
           sort: ["date_created"],
+          limit,
+          offset,
           // limit: 9,
         })
       );
-      console.log("raw");
-
+      const total_count = await directus.request(
+        aggregate("room", {
+          aggregate: { count: "*" },
+        })
+      );
       const response = rawResponse?.map((room) => ({
         ...room,
         services: room.services.map((s) => ({
           ...s.service_id,
+          room_service_id: s.id,
           custome_unit: s.custome_unit,
           custome_price: s.custom_price,
         })),
-        amenities: room.amenities.map((a) => a.amenities_id),
-        furnitures: room.furnitures.map((f) => f.furnitures_id),
+        amenities: room.amenities.map((a) => ({
+          ...a.amenities_id,
+          room_category_id: a.id,
+        })),
+        furnitures: room.furnitures.map((f) => ({
+          ...f.furnitures_id,
+          room_category_id: f.id,
+        })),
       }));
-      return response;
+
+      return {
+        data: response,
+        total: total_count[0]?.count || 0,
+        page,
+        limit,
+      };
     } catch (error) {
       //   return rejectWithValue(error);
       console.log("error", error);
     }
   }
 );
+// export const getListRoomByLandlord = createAsyncThunk(
+//   "room/getListRoomByLandlord",
+//   async (currentUserId: string) => {
+//     try {
+//       const rawResponse = await directus.request<any>(
+//         readItems("room", {
+//           fields: [
+//             "*",
+//             "room_type.*",
+//             "building.*",
+//             "building.landlord.*",
+//             "building.district.*",
+//             "photos.*",
+//             "video.*",
+//             "services.*",
+//             "services.service_id.*",
+//             "services.service_id.icon.*",
+//             "furnitures.*",
+//             "furnitures.furnitures_id.*",
+//             "furnitures.furnitures_id.icon.*",
+//             "amenities.*",
+//             "amenities.amenities_id.*",
+//             "amenities.amenities_id.icon.*",
+//           ],
+//           filter: {
+//             building: {
+//               landlord: {
+//                 _eq: currentUserId,
+//               },
+//             },
+//           },
+//           sort: ["date_created"],
+//           // limit: 9,
+//         })
+//       );
+//       console.log("raw", rawResponse);
+
+//       const response = rawResponse?.map((room) => ({
+//         ...room,
+//         services: room.services.map((s) => ({
+//           ...s.service_id,
+//           room_service_id: s.id,
+//           custome_unit: s.custome_unit,
+//           custome_price: s.custom_price,
+//         })),
+//         amenities: room.amenities.map((a) => ({
+//           ...a.amenities_id,
+//           room_category_id: a.id,
+//         })),
+//         furnitures: room.furnitures.map((f) => ({
+//           ...f.furnitures_id,
+//           room_category_id: f.id,
+//         })),
+//       }));
+//       return response;
+//     } catch (error) {
+//       //   return rejectWithValue(error);
+//       console.log("error", error);
+//     }
+//   }
+// );
 export const getRoomNewPost = createAsyncThunk(
   "room/getRoomNewPost",
   async (roomType: string) => {
@@ -228,6 +229,46 @@ export const getRoomCheapPrice = createAsyncThunk(
     } catch (error) {
       //   return rejectWithValue(error);
       console.log("error", error);
+    }
+  }
+);
+export const updateRoom = createAsyncThunk(
+  "room/updateRoom",
+  async ({ roomId, data }: { roomId: string; data: Partial<IRoom> }) => {
+    try {
+      console.log("data request update room", data);
+
+      const response = await directus.request(updateItem("room", roomId, data));
+      return response;
+    } catch (error) {
+      console.error("Update room error:", error);
+      throw error;
+    }
+  }
+);
+export const createRoom = createAsyncThunk(
+  "room/createRoom",
+  async (data: any) => {
+    try {
+      console.log("data request create room", data);
+
+      const response = await directus.request(createItem("room", data.data));
+      return response;
+    } catch (error) {
+      console.error("Create room error:", error);
+      throw error;
+    }
+  }
+);
+export const deleteRoom = createAsyncThunk(
+  "room/deleteRoom",
+  async (roomId: string) => {
+    try {
+      const response = await directus.request(deleteItem("room", roomId));
+      return response;
+    } catch (error) {
+      console.error("Delete room error:", error);
+      throw error;
     }
   }
 );

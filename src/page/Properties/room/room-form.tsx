@@ -18,14 +18,20 @@ import { Controller, useForm } from "react-hook-form";
 import { BiX } from "react-icons/bi";
 import { IoVideocamOutline } from "react-icons/io5";
 import { useDispatch, useSelector } from "react-redux";
-import ServiceForm from "./services/service-form";
-import ServiceCardGrid from "./services/service-card";
-import { getListServices } from "@/redux/services/action";
+import ServiceForm from "../services/service-form";
+import ServiceCardGrid from "../services/service-card";
+import { getListServices, updateServices } from "@/redux/services/action";
 import { URL_IMAGE } from "@/constants";
 import { IFile } from "@/types/file";
 import MDEditor from "@uiw/react-md-editor";
 import Radio from "@/components/Input/radio";
 import { DragAndDropInput } from "@/components/Input/file-upload-multiple";
+import { uploadFilesToDirectus } from "@/utils/upload-file";
+import {
+  createRoom,
+  getListRoomByLandlord,
+  updateRoom,
+} from "@/redux/room/action";
 
 interface RoomFormProps {
   room?: IRoom | null;
@@ -41,58 +47,21 @@ interface SortableImageProps {
 }
 const RoomForm = ({ room, onClose }: RoomFormProps) => {
   const dispatch = useDispatch<AppDispatch>();
+  const { searchParam } = useSelector((state: AppState) => state.room);
   const { buildingList } = useSelector((state: AppState) => state.building);
   const { roomTypeList } = useSelector((state: AppState) => state.roomType);
   const { amenitiesList } = useSelector((state: AppState) => state.amenities);
   const { servicesList } = useSelector((state: AppState) => state.services);
   const { accessToken } = useSelector((state: AppState) => state.auth);
   const { furnituresList } = useSelector((state: AppState) => state.furnitures);
-  const [images, setImages] = useState<FileWithPreview[]>([]);
-  // const [video, setVideo] = useState<FileWithPreview | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor));
-  const [showServiceForm, setShowServiceForm] = useState(false);
-
-  const defaultServices = room
-    ? room?.services
-    : servicesList?.filter((service) => service?.is_default === true);
-
-  const [services, setServices] = useState<IService[]>(defaultServices);
-  const [editingService, setEditingService] = useState(null);
-  const [uploadedFiles, setUploadedFiles] = useState<IFile[]>([]);
-  const defaultRoomImage = room ? room?.photos : [];
-
-  const [roomPhotos, setRoomPhotos] = useState<IFile[]>(defaultRoomImage);
-  console.log("defaultServices", room?.services);
-  const defaultRoomVideo = room ? room?.video : null;
-  const externalLink = `${URL_IMAGE}/${room.video?.id}/${room.video?.filename_download}`;
-  const [previewVideo, setPreviewVideo] = useState<string>(
-    externalLink || null
-  );
-  console.log("images", images);
+  const { userInfo } = useSelector((state: AppState) => state.auth);
   const [editingServiceIndex, setEditingServiceIndex] = useState<number | null>(
     null
   );
-  // const [formData, setFormData] = useState({
-  //   number: room?.number_room || "",
-  //   building: room?.building?.id || "",
-  //   room_type: room?.room_type?.id || 1,
-  //   floor: room?.floor || 1,
-  //   status: room?.status || "available",
-  //   title: room?.title || "",
-  //   acreage: room?.acreage || 0,
-  //   services: room?.services || [],
-  //   amenities: room?.amenities || [],
-  //   furnitures: room?.furnitures || [],
-  //   deposit: room?.deposit || "",
-  //   room_price: room?.room_price || "",
-  //   rental_object: room?.rental_object || "all",
-  //   limit_people: room?.limit_people || 2,
-  //   description: room?.description || "",
-  //   contract_duration: room?.contract_duration || "1_year",
-  //   photos: [],
-  // });
-
+  const extractIdFromUrl = (url: string) => {
+    const match = url.match(/assets\/([^/]+)/);
+    return match ? match[1] : null;
+  };
   const {
     register,
     handleSubmit,
@@ -103,7 +72,7 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
     formState: { errors },
   } = useForm({
     defaultValues: {
-      number: 0,
+      number_room: 0,
       building: "",
       room_type: "",
       floor: 1,
@@ -127,7 +96,7 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
   useEffect(() => {
     if (room) {
       reset({
-        number: room.number_room || 0,
+        number_room: room.number_room || 0,
         building: room.building?.id || "",
         room_type: room.room_type?.id || "",
         floor: room.floor || 1,
@@ -135,8 +104,16 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
         title: room.title || "",
         acreage: room.acreage || 0,
         services: room?.services || [],
-        amenities: room?.amenities?.map((a: any) => a.id) || [],
-        furnitures: room?.furnitures?.map((f: any) => f.id) || [],
+        amenities:
+          room?.amenities?.map((a: any) => ({
+            id: a?.id,
+            room_category_id: a?.room_category_id,
+          })) || [],
+        furnitures:
+          room?.furnitures?.map((f: any) => ({
+            id: f?.id,
+            room_category_id: f?.room_category_id,
+          })) || [],
         deposit: room.deposit || 0,
         room_price: room.room_price || 0,
         rental_object: room.rental_object || "all",
@@ -146,21 +123,6 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
         photos: room?.photos || [],
         video: room?.video || null,
       });
-      // if (room.photos?.length) {
-      //   const urls = room.photos.map(
-      //     (photo: any) => `${URL_IMAGE}/${photo.id}/${photo.filename_download}`
-      //   );
-      //   setValue("photos", urls);
-      // }
-      // if (room.video) {
-      //   console.log("video", room.video);
-
-      //   const videoUrl = `${URL_IMAGE}/${room.video.id}/${room.video.filename_download}`;
-      //   setVideo({
-      //     preview: videoUrl,
-      //     id: room.video.id,
-      //   } as FileWithPreview);
-      // }
     }
   }, [room, reset]);
   const floor = watch("floor");
@@ -171,139 +133,220 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
   const limit_people = watch("limit_people");
   const deposit = watch("deposit");
   const contract_duration = watch("contract_duration");
+  const number_room = watch("number_room");
+  const title = watch("title");
   const photos = watch("photos");
   const video = watch("video");
-  console.log("video", video);
-
-  console.log(
-    "amenities",
-    room?.amenities?.map((a: any) => a.amenities_id)
-  );
 
   useEffect(() => {
     dispatch(getListAmenities());
     dispatch(getListFurnitures());
   }, []);
-  const onSubmit = (data: any) => {
-    console.log("Form data:", data);
-    onClose();
-  };
-  useEffect(() => {
-    fetch(externalLink, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to fetch the video");
+  const onSubmit = async (data: any) => {
+    try {
+      const photoFiles: File[] = [];
+      const photoIds: string[] = [];
+
+      for (const photo of data.photos || []) {
+        if (photo instanceof File) {
+          photoFiles.push(photo);
+        } else if (typeof photo === "string") {
+          const id = extractIdFromUrl(photo);
+          if (id) photoIds.push(id);
+        } else if (photo && photo.id) {
+          photoIds.push(photo.id);
         }
-        return response.blob();
-      })
-      .then((blob) => {
-        setPreviewVideo(URL.createObjectURL(blob));
-      })
-      .catch((error) => {
-        console.error("Error fetching video:", error);
-        setPreviewVideo(null);
-      });
-  }, [room]);
-  const onDrop = useCallback(
-    (acceptedFiles: File[], fileType: "image" | "video") => {
-      acceptedFiles.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const fileWithPreview = Object.assign(file, {
-            preview: reader.result as string,
-            id: Math.random().toString(36).substring(7),
-          });
-
-          if (fileType === "image") {
-            setImages((prev) => {
-              const updated = [...prev, fileWithPreview];
-              setValue("photos", updated);
-              return updated;
-            });
-          } else {
-            // setVideo(fileWithPreview);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-    },
-    [setValue]
-  );
-
-  const removeImage = (index: number) => {
-    setImages((prev) => {
-      const updated = prev.filter((_, i) => i !== index);
-      setValue("photos", updated);
-      return updated;
-    });
-  };
-  // const removeVideo = () => {
-  //   setVideo(null);
-  // };
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-  const handleFileDrop = (e: React.DragEvent, type: "image" | "video") => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = Array.from(e.dataTransfer.files);
-    const acceptedFiles = files.filter((file) => {
-      if (type === "image") {
-        return file.type.startsWith("image/");
-      } else {
-        return file.type.startsWith("video/");
       }
-    });
-    onDrop(acceptedFiles, type);
-  };
-  // const { control } = useForm({
-  //   defaultValues: {
-  //     photos: "",
-  //     // ... other form fields
-  //   },
-  // });
-  const handleServiceSubmit = (serviceData) => {
-    console.log("Service data:", serviceData);
 
+      let uploadedPhotoIds: string[] = [];
+      if (photoFiles.length > 0) {
+        const uploadedPhotos = await uploadFilesToDirectus(photoFiles);
+        uploadedPhotoIds = uploadedPhotos.map((f) => f.id);
+      }
+
+      let videoId: string | null = null;
+      let imageFile = data.video;
+
+      // Nếu là mảng (DragAndDropInput thường trả về mảng)
+      if (Array.isArray(imageFile)) {
+        imageFile = imageFile[0];
+      }
+
+      if (imageFile instanceof File) {
+        const uploaded = await uploadFilesToDirectus([imageFile]);
+        videoId = uploaded[0]?.id;
+      } else if (typeof imageFile === "string") {
+        videoId = extractIdFromUrl(imageFile);
+      } else if (imageFile && imageFile.id) {
+        videoId = imageFile.id;
+      } else {
+        videoId = null;
+      }
+
+      const submitData = {
+        ...data,
+        photos: [...photoIds, ...uploadedPhotoIds],
+        video: videoId, // id video
+      };
+      console.log("servicescreate", submitData.services);
+
+      if (room && room.id) {
+        const existingServices = room.services || [];
+        const submittedServices = submitData.services || [];
+
+        const servicesUpdate = submittedServices
+          .map((s: any) => {
+            if (!s.room_service_id) return null;
+            const existing = existingServices.find(
+              (e: any) => e.room_service_id === s.room_service_id
+            );
+            if (!existing) return null;
+            if (
+              (s.custome_price ?? null) !== (existing.custome_price ?? null) ||
+              (s.custome_unit ?? null) !== (existing.custome_unit ?? null)
+            ) {
+              return {
+                id: s.room_service_id,
+                custom_price: s.custome_price ?? null,
+                custome_unit: s.custome_unit ?? null,
+              };
+            }
+            return null;
+          })
+          .filter(Boolean); // loại bỏ null
+
+        // Services create: những service mới chưa có room_service_id
+        const servicesCreate = submittedServices
+          .filter((s: any) => !s.room_service_id)
+          .map((s: any) => ({
+            room_id: room.id,
+            service_id: s.id,
+            custom_price: s.custome_price ?? null,
+            custome_unit: s.custome_unit ?? null,
+          }));
+
+        // Services delete: những service cũ bị bỏ khỏi submit
+        const servicesDelete = existingServices
+          .filter(
+            (e: any) =>
+              !submittedServices.some(
+                (s: any) => s.room_service_id === e.room_service_id
+              )
+          )
+          .map((e: any) => e.room_service_id);
+        const existingAmenities = room.amenities || [];
+        const existingFurnitures = room.furnitures || [];
+        const submittedAmenities = submitData.amenities || [];
+        const submittedFurnitures = submitData.furnitures || [];
+        // const amenitiesUpdate = submittedAmenities
+        //   .filter((a: any) => a.room_category_id)
+        //   .map((a: any) => ({
+        //     id: a.room_category_id,
+        //     amenities_id: a.id,
+        //   }));
+
+        const amenitiesCreate = submittedAmenities
+          .filter((a: any) => !a.room_category_id)
+          .map((a: any) => ({
+            amenities_id: a.id,
+            room_id: room.id,
+          }));
+
+        const amenitiesDelete = existingAmenities
+          .filter(
+            (a: any) => !submittedAmenities.some((sa: any) => sa.id === a.id)
+          )
+          .map((a: any) => a.room_category_id);
+        const furnitureCreate = submittedFurnitures
+          .filter((a: any) => !a.room_category_id)
+          .map((a: any) => ({
+            furnitures_id: a.id,
+            room_id: room.id,
+          }));
+
+        const furnitureDelete = existingFurnitures
+          .filter(
+            (a: any) => !submittedFurnitures.some((sa: any) => sa.id === a.id)
+          )
+          .map((a: any) => a.room_category_id);
+
+        await dispatch(
+          updateRoom({
+            roomId: room.id,
+            data: {
+              ...submitData,
+              services: {
+                update: servicesUpdate,
+                create: servicesCreate,
+                delete: servicesDelete,
+              },
+              amenities: {
+                create: amenitiesCreate,
+                delete: amenitiesDelete,
+              },
+              furnitures: { create: furnitureCreate, delete: furnitureDelete },
+            },
+          })
+        );
+      } else {
+        const servicesCreate = submitData.services.map((service: any) => ({
+          service_id: service.id,
+          custome_price: service.custome_price || null,
+          custome_unit: service.custome_unit || null,
+        }));
+        console.log("servicesCreate", servicesCreate);
+        const amenitiesCreate = submitData.amenities.map((amenity: any) => ({
+          amenities_id: amenity.id,
+        }));
+        const furnituresCreate = submitData.furnitures.map(
+          (furniture: any) => ({
+            furnitures_id: furniture.id,
+          })
+        );
+        const data = {
+          ...submitData,
+          services: {
+            create: servicesCreate,
+          },
+          amenities: {
+            create: amenitiesCreate,
+          },
+          furnitures: {
+            create: furnituresCreate,
+          },
+        };
+        console.log("Data create", data);
+
+        await dispatch(
+          createRoom({
+            data: data,
+          })
+        );
+      }
+
+      await dispatch(
+        getListRoomByLandlord({
+          ...searchParam,
+          page: 1,
+          limit: 10,
+          currentUserId: userInfo?.id,
+        })
+      );
+      console.log("Submit data:", submitData);
+
+      onClose();
+    } catch (error) {
+      console.error("Upload error:", error);
+      // Hiển thị thông báo lỗi nếu cần
+    }
+  };
+  const handleServiceSubmit = (serviceData) => {
     setEditingServiceIndex(null);
   };
-  console.log("serviceEdit", editingService);
   const handleServiceEdit = (service: IService, index: number) => {
-    console.log("serviceEdit", service);
-
     setEditingServiceIndex(index);
   };
 
-  const handleAddService = (service: IService) => {
-    setServices((prev) => [...prev, service]);
-  };
-
-  const handleDeleteService = (serviceId: string) => {
-    setServices((prev) => prev.filter((service) => service.id !== serviceId));
-  };
-
-  const handleFilesChange = (files: IFile[]) => {
-    setUploadedFiles(files);
-    console.log("Uploaded files:", files);
-  };
-
-  const handleRoomPhotosChange = (files: IFile[]) => {
-    setRoomPhotos(files);
-    console.log("Room files:", files);
-  };
-  // const handleRoomVideoChange = (files: IFile) => {
-  //   setRoomVideo(files);
-  //   console.log("Room files:", files);
-  // };
   return (
     <div className="w-full">
       <div className="flex justify-between items-center p-6 border-b border-gray-200">
@@ -329,12 +372,12 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
               </label>
               <input
                 type="text"
-                value={room?.description || ""}
-                onChange={(e) => setValue("description", e.target.value)}
+                value={title || ""}
+                onChange={(e) => setValue("title", e.target.value)}
                 className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E88E5]"
                 required
               />
-              {errors.description && (
+              {errors.title && (
                 <p className="text-red-500 text-sm">
                   Tiêu đề không được để trống
                 </p>
@@ -346,12 +389,14 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
               </label>
               <input
                 type="text"
-                value={room?.number_room || ""}
-                onChange={(e) => setValue("number", parseInt(e.target.value))}
+                value={number_room || ""}
+                onChange={(e) =>
+                  setValue("number_room", parseInt(e.target.value))
+                }
                 className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E88E5]"
                 required
               />
-              {errors.number && (
+              {errors.number_room && (
                 <p className="text-red-500 text-sm">Hãy nhập số phòng</p>
               )}
             </div>
@@ -384,18 +429,11 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
                 Phòng đơn
               </label>
               <select
-                // value={formData.room_type}
-                // onChange={(e) =>
-                //   setFormData({
-                //     ...formData,
-                //     room_type: e.target.value,
-                //   })
-                // }
                 {...register("room_type", { required: true })}
                 className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E88E5]"
                 required
               >
-                {roomTypeList.map((type) => (
+                {roomTypeList?.map((type) => (
                   <option
                     key={type?.id}
                     value={type?.id}
@@ -410,13 +448,6 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
                 Status
               </label>
               <select
-                // value={formData?.status}
-                // onChange={(e) =>
-                //   setFormData({
-                //     ...formData,
-                //     status: e.target.value,
-                //   })
-                // }
                 {...register("status")}
                 className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E88E5]"
                 required
@@ -522,7 +553,7 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
                 name="contractDuration"
                 options={contractDurationOptions}
                 value={contract_duration}
-                onChange={(value) => setValue("rental_object", value)}
+                onChange={(value) => setValue("contract_duration", value)}
                 // gridCols={}
                 layout="horizontal"
                 // title="Số người tối đa"
@@ -597,48 +628,41 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
             <label className="block text-sm font-medium text-gray-700">
               Ảnh
             </label>
-            {/* <FileUpload
-              defaultImageUrls={
-                room?.photos?.map(
-                  (p: any) => `${URL_IMAGE}/${p.id}/${p.filename_download}`
-                ) || []
-              }
-              multiple
-              onChange={(files) => {
-                // files gồm cả string (ảnh cũ) và File (ảnh mới)
-                setValue("photos", files);
-              }}
-            /> */}
-            {/* <FileUpload
-              maxFiles={5}
-              minFiles={1}
-              existingImages={roomPhotos}
-              onImagesChange={handleRoomPhotosChange}
-              title="Quản lý hình ảnh phòng"
-              description="Xem và chỉnh sửa hình ảnh phòng trọ"
-            /> */}
+
             <Controller
               name="photos"
               control={control}
               render={({ field }) => {
-                console.log("field", field);
-
                 return (
-                  <>
-                    <DragAndDropInput
-                      onChange={(file) => {
-                        field.onChange(file);
-                      }}
-                      multiple
-                      maxFiles={5}
-                      links={
-                        photos?.map(
-                          (photo: any) =>
-                            `${URL_IMAGE}/${photo.id}/${photo.filename_download}`
-                        ) || []
-                      }
-                    />
-                  </>
+                  <DragAndDropInput
+                    onChange={(file) => {
+                      field.onChange(file);
+                    }}
+                    multiple
+                    maxFiles={5}
+                    links={
+                      field.value
+                        ? field.value
+                            .map((photo: any) => {
+                              if (typeof photo === "string") {
+                                return photo;
+                              } else if (
+                                photo &&
+                                photo.id &&
+                                photo.filename_download
+                              ) {
+                                // Nếu là object từ server
+                                return `${URL_IMAGE}/${photo.id}/${photo.filename_download}`;
+                              } else if (photo instanceof File) {
+                                // Nếu là file mới
+                                return URL.createObjectURL(photo);
+                              }
+                              return null;
+                            })
+                            .filter(Boolean)
+                        : []
+                    }
+                  />
                 );
               }}
             />
@@ -651,11 +675,6 @@ const RoomForm = ({ room, onClose }: RoomFormProps) => {
               name="video"
               control={control}
               render={({ field }) => {
-                console.log("field", field);
-                console.log(
-                  "video",
-                  `${URL_IMAGE}/${video?.id}/${video?.filename_download}`
-                );
                 const videoLink =
                   field.value &&
                   typeof field.value === "object" &&
