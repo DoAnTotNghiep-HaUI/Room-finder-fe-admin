@@ -1,13 +1,14 @@
 import { RoomStatus } from "@/constants";
 import { IBuilding } from "./building";
 import { IFile } from "./file";
+import { IRentalContract } from "./contract";
 
 export interface RoomParams {
   isLoading: boolean;
   errorMessage: string;
   searchParam: SearchParams | null;
   roomList: IRoom[] | null;
-  roomNewPost: IRoom[] | null;
+  roomByBuilding: IRoom[] | null;
   roomCheapPrice: IRoom[] | null;
   pagination?: {
     currentPage: number;
@@ -51,7 +52,7 @@ export interface IRoom {
   limit_people: number;
   description: string;
   contract_duration: string;
-  contract?: any;
+  contract?: IRentalContract;
   number_room: number;
   floor: number;
   room_price: number;
@@ -71,8 +72,8 @@ export interface IService {
   name: string;
   default_price: number;
   unit: string;
-  icon: IFile;
-  is_default: boolean;
+  icon?: IFile;
+  is_default?: boolean;
 }
 export interface IRoomService {
   id: string;

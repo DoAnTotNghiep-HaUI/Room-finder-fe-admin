@@ -52,6 +52,8 @@ export const getListRoomByLandlord = createAsyncThunk(
             "building.*",
             "building.landlord.*",
             "building.district.*",
+            "contract.*",
+            "contract.tenant.*",
             "photos.*",
             "video.*",
             "services.*",
@@ -92,6 +94,7 @@ export const getListRoomByLandlord = createAsyncThunk(
           ...f.furnitures_id,
           room_category_id: f.id,
         })),
+        contract: room.contract.filter((c) => c.status === "active")[0],
       }));
 
       return {
@@ -167,11 +170,11 @@ export const getListRoomByLandlord = createAsyncThunk(
 //     }
 //   }
 // );
-export const getRoomNewPost = createAsyncThunk(
-  "room/getRoomNewPost",
-  async (roomType: string) => {
+export const getListRoomByBuilding = createAsyncThunk(
+  "room/getListRoomByBuilding",
+  async (buildingId: string) => {
     try {
-      const response: any = await directus.request(
+      const rawResponse: any = await directus.request(
         readItems("room", {
           fields: [
             "*",
@@ -179,18 +182,45 @@ export const getRoomNewPost = createAsyncThunk(
             "building.*",
             "building.landlord.*",
             "building.district.*",
-
+            "contract.*",
+            "contract.tenant.*",
             "photos.*",
+            "video.*",
+            "services.*",
+            "services.service_id.*",
+            "services.service_id.icon.*",
+            "furnitures.*",
+            "furnitures.furnitures_id.*",
+            "furnitures.furnitures_id.icon.*",
+            "amenities.*",
+            "amenities.amenities_id.*",
+            "amenities.amenities_id.icon.*",
           ],
           filter: {
-            room_type: {
-              _eq: roomType,
+            building: {
+              _eq: buildingId,
             },
           },
-          sort: ["-date_created"],
-          limit: 9,
         })
       );
+      const response = rawResponse?.map((room) => ({
+        ...room,
+        services: room.services.map((s) => ({
+          ...s.service_id,
+          room_service_id: s.id,
+          custome_unit: s.custome_unit,
+          custome_price: s.custom_price,
+        })),
+        amenities: room.amenities.map((a) => ({
+          ...a.amenities_id,
+          room_category_id: a.id,
+        })),
+        furnitures: room.furnitures.map((f) => ({
+          ...f.furnitures_id,
+          room_category_id: f.id,
+        })),
+        contract: room.contract.filter((c) => c.status === "active")[0],
+      }));
       console.log("room list data", response);
 
       return response;

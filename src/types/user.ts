@@ -27,7 +27,7 @@ export interface IUser {
   userType: string;
   first_name: string;
   last_name: string;
-  phone: string;
+  phone_number: string;
   status: string;
   id: string;
   role: any;

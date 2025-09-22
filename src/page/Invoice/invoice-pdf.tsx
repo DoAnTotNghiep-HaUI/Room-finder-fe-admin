@@ -1,358 +1,440 @@
 "use client";
 
-import { InvoiceData } from "@/types/invoice";
-import {
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  Font,
-} from "@react-pdf/renderer";
-import { format } from "date-fns";
-
-// Register fonts
-Font.register({
-  family: "Roboto",
-  fonts: [
-    {
-      src: "https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf",
-      fontWeight: 400,
-    },
-    {
-      src: "https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf",
-      fontWeight: 700,
-    },
-  ],
-});
-
-// Create styles
-const styles = StyleSheet.create({
-  page: {
-    fontFamily: "Roboto",
-    fontSize: 12,
-    padding: 30,
-    backgroundColor: "#ffffff",
-  },
-  header: {
-    marginBottom: 20,
-    borderBottom: "1px solid #e5e7eb",
-    paddingBottom: 10,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 700,
-    marginBottom: 10,
-    textAlign: "center",
-    color: "#1e3a8a",
-  },
-  subtitle: {
-    fontSize: 14,
-    marginBottom: 5,
-    textAlign: "center",
-    color: "#4b5563",
-  },
-  section: {
-    marginBottom: 15,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: 700,
-    marginBottom: 8,
-    backgroundColor: "#f3f4f6",
-    padding: 5,
-    color: "#1f2937",
-  },
-  row: {
-    flexDirection: "row",
-    marginBottom: 5,
-  },
-  col: {
-    flex: 1,
-  },
-  label: {
-    fontWeight: 700,
-    marginRight: 5,
-    color: "#4b5563",
-  },
-  value: {
-    color: "#1f2937",
-  },
-  table: {
-    style: "table",
-    width: "100%",
-    borderStyle: "solid",
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    marginBottom: 10,
-  },
-  tableRow: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    borderBottomStyle: "solid",
-  },
-  tableHeader: {
-    backgroundColor: "#f3f4f6",
-    fontWeight: 700,
-    padding: 5,
-    color: "#1f2937",
-  },
-  tableCell: {
-    padding: 5,
-  },
-  col20: {
-    width: "20%",
-  },
-  col25: {
-    width: "25%",
-  },
-  col30: {
-    width: "30%",
-  },
-  col40: {
-    width: "40%",
-  },
-  col50: {
-    width: "50%",
-  },
-  col60: {
-    width: "60%",
-  },
-  col70: {
-    width: "70%",
-  },
-  col80: {
-    width: "80%",
-  },
-  notes: {
-    marginTop: 20,
-    padding: 10,
-    backgroundColor: "#f9fafb",
-    borderRadius: 5,
-  },
-  notesTitle: {
-    fontWeight: 700,
-    marginBottom: 5,
-    color: "#4b5563",
-  },
-  total: {
-    marginTop: 20,
-    borderTop: "1px solid #e5e7eb",
-    paddingTop: 10,
-  },
-  totalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 5,
-  },
-  grandTotal: {
-    fontWeight: 700,
-    fontSize: 16,
-    color: "#1e3a8a",
-  },
-  footer: {
-    marginTop: 30,
-    textAlign: "center",
-    fontSize: 10,
-    color: "#6b7280",
-  },
-});
+import React, { useState } from "react";
+import { Dialog, Transition } from "@headlessui/react";
+import { FiX, FiDownload } from "react-icons/fi";
+import { IInvoice } from "@/types/invoice";
+import PDFDownloadButton from "./pdf-download-button";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import InvoicePDFDocument from "./pdf-download-document";
 
 interface InvoicePDFProps {
-  invoice: InvoiceData;
+  invoice: IInvoice;
+  onClose: () => void;
 }
 
-export default function InvoicePDF({ invoice }: InvoicePDFProps) {
+export default function InvoicePDF({ invoice, onClose }: InvoicePDFProps) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  const handleClose = () => {
+    setIsOpen(false);
+    setTimeout(onClose, 300);
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("vi-VN").format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN");
+  };
+
+  const getCurrentMonth = () => {
+    const date = new Date(invoice.from_date);
+    return `Tháng ${date.getMonth() + 1} năm ${date.getFullYear()}`;
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownload = () => {
+    // In a real implementation, you would use react-pdf to generate and download the PDF
+    // For now, we'll just trigger the print dialog
+    window.print();
+  };
+  console.log("invoice", invoice);
+
   return (
-    <Document>
-      <Page
-        size="A4"
-        style={styles.page}
+    <Transition
+      appear
+      show={isOpen}
+      as={React.Fragment}
+    >
+      <Dialog
+        as="div"
+        className="relative z-50"
+        onClose={handleClose}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>RENTAL INVOICE</Text>
-          <Text style={styles.subtitle}>
-            Invoice #: INV-{invoice.contractCode}-
-            {format(new Date(), "yyyyMMdd")}
-          </Text>
-          <Text style={styles.subtitle}>
-            Date: {format(new Date(), "MMMM dd, yyyy")}
-          </Text>
-        </View>
+        <Transition.Child
+          as={React.Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black bg-opacity-25" />
+        </Transition.Child>
 
-        {/* Tenant & Room Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tenant & Room Information</Text>
-          <View style={styles.row}>
-            <View style={styles.col}>
-              <View style={styles.row}>
-                <Text style={styles.label}>Tenant Name:</Text>
-                <Text style={styles.value}>{invoice.tenantName}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Contract Code:</Text>
-                <Text style={styles.value}>{invoice.contractCode}</Text>
-              </View>
-            </View>
-            <View style={styles.col}>
-              <View style={styles.row}>
-                <Text style={styles.label}>Building Code:</Text>
-                <Text style={styles.value}>{invoice.buildingCode}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Room Number:</Text>
-                <Text style={styles.value}>{invoice.roomNumber}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <Transition.Child
+              as={React.Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white shadow-xl transition-all">
+                {/* Header Controls */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 print:hidden">
+                  <Dialog.Title className="text-lg font-semibold text-gray-900">
+                    Hóa đơn {invoice.invoice_number}
+                  </Dialog.Title>
+                  <div className="flex gap-2">
+                    <PDFDownloadLink
+                      document={<InvoicePDFDocument invoice={invoice} />}
+                      fileName={`hoa-don-${invoice.invoice_number}.pdf`}
+                    >
+                      {({ loading }) =>
+                        loading ? (
+                          "Đang tạo PDF..."
+                        ) : (
+                          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <FiDownload className="text-sm" />
+                            Tải PDF
+                          </button>
+                        )
+                      }
+                    </PDFDownloadLink>
 
-        {/* Invoice Period */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Invoice Period</Text>
-          <View style={styles.row}>
-            <View style={styles.col}>
-              <View style={styles.row}>
-                <Text style={styles.label}>From Date:</Text>
-                <Text style={styles.value}>
-                  {format(new Date(invoice.fromDate), "MMMM dd, yyyy")}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.col}>
-              <View style={styles.row}>
-                <Text style={styles.label}>To Date:</Text>
-                <Text style={styles.value}>
-                  {format(new Date(invoice.toDate), "MMMM dd, yyyy")}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.col}>
-              <View style={styles.row}>
-                <Text style={styles.label}>Number of Days:</Text>
-                <Text style={styles.value}>{invoice.numberOfDays}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
+                    <button
+                      onClick={handleClose}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <FiX className="text-xl text-gray-500" />
+                    </button>
+                  </div>
+                </div>
 
-        {/* Charges Table */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Charges</Text>
-
-          {/* Table Header */}
-          <View style={[styles.table]}>
-            <View style={[styles.tableRow, styles.tableHeader]}>
-              <Text style={[styles.tableCell, styles.col40]}>Item</Text>
-              <Text style={[styles.tableCell, styles.col20]}>Quantity</Text>
-              <Text style={[styles.tableCell, styles.col20]}>Rate</Text>
-              <Text style={[styles.tableCell, styles.col20]}>Amount</Text>
-            </View>
-
-            {/* Room Fee */}
-            <View style={styles.tableRow}>
-              <Text style={[styles.tableCell, styles.col40]}>Room Fee</Text>
-              <Text style={[styles.tableCell, styles.col20]}>
-                {invoice.numberOfDays} days
-              </Text>
-              <Text style={[styles.tableCell, styles.col20]}>
-                {Math.round(invoice.roomPrice / 30).toLocaleString()} VND/day
-              </Text>
-              <Text style={[styles.tableCell, styles.col20]}>
-                {Math.round(
-                  (invoice.roomPrice / 30) * invoice.numberOfDays
-                ).toLocaleString()}{" "}
-                VND
-              </Text>
-            </View>
-
-            {/* Electricity */}
-            <View style={styles.tableRow}>
-              <Text style={[styles.tableCell, styles.col40]}>Electricity</Text>
-              <Text style={[styles.tableCell, styles.col20]}>
-                {invoice.electricityUsage} kWh
-              </Text>
-              <Text style={[styles.tableCell, styles.col20]}>
-                {invoice.electricityRate.toLocaleString()} VND/kWh
-              </Text>
-              <Text style={[styles.tableCell, styles.col20]}>
-                {invoice.electricityTotal.toLocaleString()} VND
-              </Text>
-            </View>
-
-            {/* Water */}
-            <View style={styles.tableRow}>
-              <Text style={[styles.tableCell, styles.col40]}>
-                Water{" "}
-                {invoice.waterCalculationMethod === "meter"
-                  ? "(by meter)"
-                  : "(by people)"}
-              </Text>
-              <Text style={[styles.tableCell, styles.col20]}>
-                {invoice.waterCalculationMethod === "meter"
-                  ? `${invoice.waterUsage} m³`
-                  : `${invoice.numberOfPeople} people`}
-              </Text>
-              <Text style={[styles.tableCell, styles.col20]}>
-                {invoice.waterRate.toLocaleString()} VND/
-                {invoice.waterCalculationMethod === "meter" ? "m³" : "person"}
-              </Text>
-              <Text style={[styles.tableCell, styles.col20]}>
-                {invoice.waterTotal.toLocaleString()} VND
-              </Text>
-            </View>
-
-            {/* Services */}
-            {invoice.services
-              .filter((service) => service.quantity > 0)
-              .map((service, index) => (
-                <View
-                  key={index}
-                  style={styles.tableRow}
+                {/* Invoice Content */}
+                <div
+                  className="p-8 bg-white"
+                  id="invoice-content"
                 >
-                  <Text style={[styles.tableCell, styles.col40]}>
-                    {service.name}
-                  </Text>
-                  <Text style={[styles.tableCell, styles.col20]}>
-                    {service.quantity}
-                  </Text>
-                  <Text style={[styles.tableCell, styles.col20]}>
-                    {service.unitPrice.toLocaleString()} VND
-                  </Text>
-                  <Text style={[styles.tableCell, styles.col20]}>
-                    {service.total.toLocaleString()} VND
-                  </Text>
-                </View>
-              ))}
-          </View>
-        </View>
+                  {/* Header */}
+                  <div className="text-center mb-6">
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                      THÔNG BÁO HÓA ĐƠN
+                    </h1>
+                    <h2 className="text-lg font-semibold text-gray-700">
+                      {getCurrentMonth()}
+                    </h2>
+                    <div className="flex justify-between items-center mt-4 text-sm">
+                      <div>
+                        <span>Từ ngày </span>
+                        <span className="font-semibold">
+                          {formatDate(invoice.from_date)}
+                        </span>
+                        <span> Đến ngày </span>
+                        <span className="font-semibold">
+                          {formatDate(invoice.to_date)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-        {/* Notes */}
-        {invoice.notes && (
-          <View style={styles.notes}>
-            <Text style={styles.notesTitle}>Notes:</Text>
-            <Text>{invoice.notes}</Text>
-          </View>
-        )}
+                  {/* Customer Info */}
+                  <div className="mb-6">
+                    <div className="grid grid-cols-2 gap-8">
+                      <div>
+                        <div className="mb-2">
+                          <span>Họ và tên khách hàng </span>
+                          <span className="font-bold text-lg">
+                            {invoice.contract.tenant.id}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <span>Nhà </span>
+                            <span className="font-semibold border border-gray-400 px-2 py-1">
+                              {invoice.contract.room.building.name}
+                            </span>
+                          </div>
+                          <div>
+                            <span>Số phòng </span>
+                            <span className="font-semibold border border-gray-400 px-2 py-1">
+                              {invoice.contract.room.number_room}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mt-2">
+                          <span>Mã hợp đồng </span>
+                          <span className="font-semibold">
+                            {invoice.contract.contract_number}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="bg-yellow-200 px-4 py-2 inline-block">
+                          <div className="font-bold text-lg">
+                            {invoice.invoice_number}
+                          </div>
+                          <div className="text-sm">
+                            {formatDate(invoice.date_created)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-        {/* Total */}
-        <View style={styles.total}>
-          <View style={[styles.totalRow, { marginTop: 10 }]}>
-            <Text style={styles.grandTotal}>GRAND TOTAL:</Text>
-            <Text style={styles.grandTotal}>
-              {invoice.grandTotal.toLocaleString()} VND
-            </Text>
-          </View>
-        </View>
+                  {/* Invoice Table */}
+                  <div className="border-2 border-gray-800 mb-6">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b-2 border-gray-800">
+                          <th className="border-r border-gray-800 p-2 text-center font-bold">
+                            STT
+                          </th>
+                          <th className="border-r border-gray-800 p-2 text-center font-bold">
+                            Khoản
+                          </th>
+                          <th className="border-r border-gray-800 p-2 text-center font-bold">
+                            Chi tiết
+                          </th>
+                          <th className="p-2 text-center font-bold">
+                            Thành Tiền
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {/* Room Rent */}
+                        <tr className="border-b border-gray-800">
+                          <td className="border-r border-gray-800 p-2 text-center">
+                            1
+                          </td>
+                          <td className="border-r border-gray-800 p-2">
+                            Tiền phòng
+                          </td>
+                          <td className="border-r border-gray-800 p-2">
+                            <em>Từ ngày</em> {formatDate(invoice.from_date)}{" "}
+                            <em>Đến ngày</em> {formatDate(invoice.to_date)}{" "}
+                            <em>Số ngày</em>{" "}
+                            {/* <span className="font-bold">
+                              {invoice.days_count}
+                            </span> */}
+                          </td>
+                          <td className="p-2 text-right font-semibold">
+                            {formatCurrency(invoice.contract.room.room_price)}
+                          </td>
+                        </tr>
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text>Thank you for your business!</Text>
-          <Text>Payment due within 7 days of invoice date.</Text>
-        </View>
-      </Page>
-    </Document>
+                        {/* Electricity */}
+                        <tr className="border-b border-gray-800">
+                          <td className="border-r border-gray-800 p-2 text-center">
+                            2
+                          </td>
+                          <td className="border-r border-gray-800 p-2">
+                            DV Điện
+                          </td>
+                          <td className="border-r border-gray-800 p-2">
+                            <em>CS cũ</em>{" "}
+                            <span className="font-bold">
+                              {invoice.electricity_old_index}
+                            </span>{" "}
+                            <em>CS Mới</em>{" "}
+                            <span className="font-bold">
+                              {invoice.electricity_new_index}
+                            </span>{" "}
+                            <em>Số sử dụng</em>{" "}
+                            <span className="font-bold">
+                              {invoice.electricity_usage}
+                            </span>
+                          </td>
+                          <td className="p-2 text-right font-semibold">
+                            {formatCurrency(invoice.electricity_total)}
+                          </td>
+                        </tr>
+
+                        {/* Water */}
+                        <tr className="border-b border-gray-800">
+                          <td className="border-r border-gray-800 p-2 text-center">
+                            3
+                          </td>
+                          <td className="border-r border-gray-800 p-2">
+                            DV Nước
+                          </td>
+                          <td className="border-r border-gray-800 p-2">
+                            {invoice.water_calculation_type === "meter" ? (
+                              <>
+                                <em>CS cũ</em>{" "}
+                                <span className="font-bold">
+                                  {invoice.water_old_index}
+                                </span>{" "}
+                                <em>CS Mới</em>{" "}
+                                <span className="font-bold">
+                                  {invoice.water_new_index}
+                                </span>{" "}
+                                <em>Số sử dụng</em>{" "}
+                                <span className="font-bold">
+                                  {invoice?.water_usage}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <em>Số người</em>{" "}
+                                <span className="font-bold">
+                                  {invoice.water_people_count}
+                                </span>{" "}
+                                <em>Đơn giá</em>{" "}
+                                <span className="font-bold">
+                                  {formatCurrency(invoice?.water_price)}
+                                </span>
+                              </>
+                            )}
+                          </td>
+                          <td className="p-2 text-right font-semibold">
+                            {formatCurrency(invoice.water_total)}
+                          </td>
+                        </tr>
+
+                        {/* Services */}
+                        {invoice?.services?.map((service, index) => (
+                          <tr
+                            key={index}
+                            className="border-b border-gray-800"
+                          >
+                            <td className="border-r border-gray-800 p-2 text-center">
+                              {4 + index}
+                            </td>
+                            <td className="border-r border-gray-800 p-2">
+                              {service.name}
+                            </td>
+                            <td className="border-r border-gray-800 p-2">
+                              <em>Số lượng</em>{" "}
+                              <span className="font-bold">
+                                {service.quantity}
+                              </span>{" "}
+                              <em>Đơn giá</em>{" "}
+                              <span className="font-bold">
+                                {formatCurrency(service.unit_price)}
+                              </span>
+                            </td>
+                            <td className="p-2 text-right font-semibold">
+                              {formatCurrency(
+                                service.quantity * service.unit_price
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+
+                        {/* Empty rows to match the template */}
+                        {Array.from({
+                          length: Math.max(
+                            0,
+                            11 - (3 + invoice.services.length)
+                          ),
+                        }).map((_, index) => (
+                          <tr
+                            key={`empty-${index}`}
+                            className="border-b border-gray-800"
+                          >
+                            <td className="border-r border-gray-800 p-2 text-center">
+                              {4 + invoice.services.length + index}
+                            </td>
+                            <td className="border-r border-gray-800 p-2"></td>
+                            <td className="border-r border-gray-800 p-2"></td>
+                            <td className="p-2 text-right">-</td>
+                          </tr>
+                        ))}
+
+                        {/* Total */}
+                        <tr className="border-b-2 border-gray-800 bg-gray-50">
+                          <td
+                            className="border-r border-gray-800 p-2 text-center font-bold"
+                            colSpan={3}
+                          >
+                            Cộng:
+                          </td>
+                          <td className="p-2 text-right font-bold text-lg">
+                            {formatCurrency(invoice.total_amount)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="space-y-4 text-sm">
+                    <p className="text-center">
+                      <span>Quy khách vui lòng chuyển khoản </span>
+                      <span className="font-bold">ĐÚNG</span>
+                      <span> số tiền </span>
+                      <span className="font-bold">ĐÚNG</span>
+                      <span> nội dung và </span>
+                      <span className="font-bold">
+                        ĐÚNG SỐ TÀI KHOẢN BAN QUẢN LÝ ĐÃ CUNG CẤP
+                      </span>
+                      <span>. BAN QUẢN LÝ SẼ </span>
+                      <span className="font-bold">
+                        KHÔNG CHỊU TRÁCH NHIỆM NẾU QUY KHÁCH CHUYỂN TIỀN VÀO SỐ
+                        TÀI KHOẢN KHÁC!
+                      </span>
+                    </p>
+
+                    <div className="text-center">
+                      <span>Nội dung chuyển khoản: </span>
+                      <span className="font-bold text-red-600">
+                        {invoice.invoice_number}{" "}
+                        {invoice.contract.contract_number}
+                      </span>
+                      <span className="ml-4">Ngân hàng thụ hưởng </span>
+                      <span className="font-bold text-red-600">8851062547</span>
+                      <span className="ml-4 font-bold text-red-600">
+                        PHAM HOAI THU
+                      </span>
+                      <span className="ml-4 font-bold text-red-600">BIDV</span>
+                    </div>
+
+                    <div className="text-center">
+                      <span>Trong đó: </span>
+                      <span className="font-bold">
+                        {invoice.contract.room.building.name}
+                      </span>
+                      <span> là tòa nhà </span>
+                      <span className="font-bold">
+                        {invoice.contract.room.number_room}
+                      </span>
+                      <span> là số phòng </span>
+                      <span className="font-bold">
+                        {invoice.contract.contract_number}
+                      </span>
+                      <span> là tháng thanh toán</span>
+                    </div>
+
+                    <div className="text-center font-bold">
+                      BAN QUẢN LÝ XIN TRAO TẶNG 10.000.000 CHO MỖI TRƯỜNG HỢP
+                      PHÁT HIỆN SAI PHẠM TRONG THU TIỀN KHÁCH HÀNG CỦA QUẢN LÝ
+                      TÒA NHÀ.
+                    </div>
+
+                    <div className="text-center">
+                      <span>Phản ánh và thắc mắc xin liên hệ: Hotline: </span>
+                      <span className="font-bold">0392 136 792</span>
+                    </div>
+
+                    <div className="flex justify-between mt-8">
+                      <div className="text-center">
+                        <div className="font-bold text-lg mb-2">
+                          BAN QUẢN LÝ RENHOUSE
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-bold text-lg mb-2">KHÁCH HÀNG</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
+        </div>
+      </Dialog>
+    </Transition>
   );
 }

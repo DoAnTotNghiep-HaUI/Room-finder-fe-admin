@@ -5,7 +5,7 @@ import {
   // getListRoom,
   getListRoomByLandlord,
   getRoomCheapPrice,
-  getRoomNewPost,
+  getListRoomByBuilding,
 } from "./action";
 
 const initialState: RoomParams = {
@@ -13,7 +13,7 @@ const initialState: RoomParams = {
   errorMessage: "",
   roomList: null,
   searchParam: null,
-  roomNewPost: null,
+  roomByBuilding: null,
   roomCheapPrice: null,
   pagination: {
     currentPage: 1,
@@ -77,15 +77,15 @@ const roomSlice = createSlice({
         };
         console.log("action.payload", action.payload);
       })
-      .addCase(getRoomNewPost.pending, (state) => {
+      .addCase(getListRoomByBuilding.pending, (state) => {
         state.isLoading = true;
       })
-      .addCase(getRoomNewPost.fulfilled, (state, action) => {
-        state.roomNewPost = action.payload;
+      .addCase(getListRoomByBuilding.fulfilled, (state, action) => {
+        state.roomByBuilding = action.payload;
 
         state.isLoading = false;
       })
-      .addCase(getRoomNewPost.rejected, (state) => {
+      .addCase(getListRoomByBuilding.rejected, (state) => {
         state.isLoading = false;
       })
       .addCase(getRoomCheapPrice.fulfilled, (state, action) => {
