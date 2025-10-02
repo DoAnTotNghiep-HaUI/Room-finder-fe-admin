@@ -14,6 +14,8 @@ import furnituresReducer from "../redux/furnitures/store";
 import servicesReducer from "../redux/services/store";
 import contractsReducer from "../redux/contracts/store";
 import invoiceReducer from "../redux/invoice/store";
+import recentActivitiesReducer from "../redux/recent-activities/store";
+import bookingReducer from "../redux/booking/store";
 const rootReducer = combineReducers({
   auth: authReducer,
   conversation: conversationReducer,
@@ -27,6 +29,8 @@ const rootReducer = combineReducers({
   services: servicesReducer,
   contracts: contractsReducer,
   invoice: invoiceReducer,
+  recentActivities: recentActivitiesReducer,
+  booking: bookingReducer,
 });
 const store = configureStore({
   reducer: rootReducer,

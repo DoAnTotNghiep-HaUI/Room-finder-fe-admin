@@ -10,10 +10,12 @@ import {
   FiEye,
   FiFileText,
 } from "react-icons/fi";
+import ReactMarkdown from "react-markdown";
 import { Dialog, Transition } from "@headlessui/react";
 import InvoicePDF from "./invoice-pdf";
 import { IRoom } from "@/types/room";
 import { IInvoice } from "@/types/invoice";
+import MDEditor from "@uiw/react-md-editor";
 
 interface InvoiceViewProps {
   room: IRoom;
@@ -592,9 +594,13 @@ export default function InvoiceView({
                           <h3 className="font-semibold text-foreground mb-3">
                             Ghi chú
                           </h3>
-                          <p className="text-foreground whitespace-pre-wrap">
-                            {selectedInvoice.description}
-                          </p>
+                          <MDEditor
+                            hideToolbar={true}
+                            // height="auto"
+                            style={{ border: "none" }}
+                            preview="preview"
+                            value={selectedInvoice.description}
+                          />
                         </div>
                       )}
                     </div>

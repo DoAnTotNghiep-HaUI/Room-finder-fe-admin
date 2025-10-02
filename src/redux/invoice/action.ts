@@ -28,6 +28,8 @@ export const getInvoicesByBuilding = createAsyncThunk(
             "*",
             "contract.*",
             "contract.room.*",
+            "contract.room.contract.tenant.*",
+
             "contract.tenant.*",
             "contract.room.building.*",
           ],
@@ -57,6 +59,7 @@ export const getInvoicesByRoom = createAsyncThunk(
             "contract.*",
             "contract.room.*",
             "contract.tenant.*",
+            "contract.room.contract.tenant.*",
             "services.*",
           ],
           sort: ["-created_at"],

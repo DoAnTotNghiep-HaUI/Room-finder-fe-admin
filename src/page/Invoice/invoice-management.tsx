@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { Fragment, useEffect, useState } from "react";
 import {
   FiHome,
   FiPlus,
@@ -24,7 +24,13 @@ import {
   getListRoomByLandlord,
 } from "@/redux/room/action";
 import InvoiceView from "./invoice-view";
-import { getInvoicesByBuilding } from "@/redux/invoice/action";
+import {
+  createInvoice,
+  deleteInvoice,
+  getInvoicesByBuilding,
+  updateInvoice,
+} from "@/redux/invoice/action";
+import { createRecentActivity } from "@/redux/recent-activities/action";
 
 export default function InvoiceManagement() {
   const dispatch = useDispatch<AppDispatch>();
@@ -43,6 +49,7 @@ export default function InvoiceManagement() {
   const [selectedRoom, setSelectedRoom] = useState<IRoom | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<IInvoice | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<IInvoice | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   console.log("allInvoices", allInvoices);
 
   useEffect(() => {
@@ -55,13 +62,10 @@ export default function InvoiceManagement() {
   useEffect(() => {
     setAllInvoices(invoices);
   }, [invoices]);
-  const filteredRooms = selectedBuilding
-    ? roomList?.filter((room) => room.building.id === selectedBuilding.id)
-    : [];
 
   const getRoomInvoices = (roomId: string) => {
     return allInvoices?.filter(
-      (invoice) => invoice.contract.room.id === roomId
+      (invoice) => invoice?.contract?.room?.id === roomId
     );
   };
 
@@ -78,49 +82,56 @@ export default function InvoiceManagement() {
 
   const handleEditInvoice = (invoice: IInvoice) => {
     setEditingInvoice(invoice);
-    setSelectedRoom(invoice.contract.room);
+    setSelectedRoom(invoice?.contract?.room);
     setShowInvoiceForm(true);
   };
-
   const handleDeleteInvoice = (invoiceId: string) => {
-    if (confirm("Bạn có chắc chắn muốn xóa hóa đơn này?")) {
-      setAllInvoices((prev) => prev.filter((inv) => inv.id !== invoiceId));
+    const invoice = allInvoices.find((inv) => inv.id === invoiceId);
+    setSelectedInvoice(invoice || null);
+    setShowDeleteDialog(true);
+  };
+  const confirmDeleteInvoice = () => {
+    if (selectedInvoice) {
+      dispatch(deleteInvoice(selectedInvoice.id));
       toast.success("Đã xóa hóa đơn thành công");
+      setShowDeleteDialog(false);
+      setSelectedInvoice(null);
     }
   };
-  const handleSaveInvoice = (invoiceData: any) => {
+
+  const handleSaveInvoice = async (invoiceData: any) => {
     if (editingInvoice) {
-      setAllInvoices((prev) =>
-        prev.map((inv) =>
-          inv.id === editingInvoice.id ? { ...inv, ...invoiceData } : inv
-        )
+      await dispatch(
+        updateInvoice({
+          invoiceId: editingInvoice.id,
+          data: { ...invoiceData, contract: editingInvoice?.contract?.id },
+        })
+      );
+      dispatch(
+        createRecentActivity({
+          type: "invoice",
+          message: `Hóa đơn ${invoiceData.invoice_number} đã được cập nhật`,
+          landlord: userInfo.id,
+        })
       );
       toast.success("Đã cập nhật hóa đơn thành công");
     } else {
       const newInvoice = {
-        // id: Date.now().toString(),
-        // invoice_number: `HD${Date.now()}`,
-        // room: selectedRoom!,
-        // status: "unpaid",
-        // total_amount: invoiceData.total_amount || selectedRoom!.room_price,
-        // created_at: new Date().toISOString(),
-        // period: invoiceData.period,
-        // // electricity_old: invoiceData.electricity_old,
-        // // electricity_new: invoiceData.electricity_new,
-        // // water_old: invoiceData.water_old,
-        // // water_new: invoiceData.water_new,
-        // // room_rent: invoiceData.room_rent,
-        // electricity_price: invoiceData.electricity_price,
-        // water_price: invoiceData.water_price,
-        // other_services: invoiceData.other_services,
-        // electricity_usage: invoiceData.electricity_usage,
-        // water_usage: invoiceData.water_usage,
-        // electricity_cost: invoiceData.electricity_cost,
-        // water_cost: invoiceData.water_cost,
+        ...invoiceData,
+        contract: invoiceData.contract.id,
       };
+      dispatch(createInvoice(newInvoice));
+      dispatch(
+        createRecentActivity({
+          type: "invoice",
+          message: `Hóa đơn ${invoiceData.invoice_number} đã được tạo`,
+          landlord: userInfo.id,
+        })
+      );
       // setAllInvoices((prev) => [...prev, newInvoice]);
       toast.success("Đã tạo hóa đơn thành công");
     }
+    await dispatch(getInvoicesByBuilding(selectedBuilding?.id));
     setShowInvoiceForm(false);
   };
   const formatCurrency = (amount: number) => {
@@ -364,7 +375,7 @@ export default function InvoiceManagement() {
           </div>
         )}
 
-        {selectedBuilding && roomByBuilding.length === 0 && (
+        {selectedBuilding && roomByBuilding?.length === 0 && (
           <div className="text-center py-12">
             <FiHome className="mx-auto text-6xl text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold text-foreground mb-2">
@@ -377,39 +388,6 @@ export default function InvoiceManagement() {
         )}
         <AnimatePresence>
           {showInvoiceForm && selectedRoom && (
-            // <Dialog
-            //   as={motion.div}
-            //   initial={{ opacity: 0 }}
-            //   animate={{ opacity: 1 }}
-            //   exit={{ opacity: 0 }}
-            //   open={showInvoiceForm}
-            //   onClose={() => setShowInvoiceForm(false)}
-            //   className="relative z-50"
-            // >
-            //   <div className="fixed inset-0 bg-black/25" />
-            //   <div className="fixed inset-0 overflow-y-auto">
-            //     <div className="flex min-h-full items-center justify-center p-4">
-            //       <Dialog.Panel
-            //         as={motion.div}
-            //         initial={{ scale: 0.95, opacity: 0 }}
-            //         animate={{ scale: 1, opacity: 1 }}
-            //         exit={{ scale: 0.95, opacity: 0 }}
-            //         className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all border border-border"
-            //       >
-            //         {/* <div className="flex items-center justify-between mb-6">
-            //           <Dialog.Title className="text-lg font-medium text-foreground">
-            //             {editingInvoice
-            //               ? "Chỉnh sửa hóa đơn"
-            //               : "Tạo hóa đơn mới"}
-            //           </Dialog.Title>
-            //           <button
-            //             onClick={() => setShowInvoiceForm(false)}
-            //             className="p-2 hover:bg-muted rounded-lg transition-colors"
-            //           >
-            //             <FiX className="text-muted-foreground" />
-            //           </button>
-            //         </div> */}
-
             <InvoiceForm
               room={selectedRoom}
               invoice={editingInvoice}
@@ -417,47 +395,12 @@ export default function InvoiceManagement() {
               onSave={handleSaveInvoice}
               // onCancel={() => setShowInvoiceForm(false)}
             />
-            //       </Dialog.Panel>
-            //     </div>
-            //   </div>
-            // </Dialog>
           )}
         </AnimatePresence>
 
         {/* Invoice View Modal */}
         <AnimatePresence>
           {showInvoiceView && selectedRoom && (
-            // <Dialog
-            //   as={motion.div}
-            //   initial={{ opacity: 0 }}
-            //   animate={{ opacity: 1 }}
-            //   exit={{ opacity: 0 }}
-            //   open={showInvoiceView}
-            //   onClose={() => setShowInvoiceView(false)}
-            //   className="relative z-50"
-            // >
-            //   <div className="fixed inset-0 bg-black/25" />
-            //   <div className="fixed inset-0 overflow-y-auto">
-            //     <div className="flex min-h-full items-center justify-center p-4">
-            //       <Dialog.Panel
-            //         as={motion.div}
-            //         initial={{ scale: 0.95, opacity: 0 }}
-            //         animate={{ scale: 1, opacity: 1 }}
-            //         exit={{ scale: 0.95, opacity: 0 }}
-            //         className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-card p-6 shadow-xl transition-all border border-border"
-            //       >
-            //         <div className="flex items-center justify-between mb-6">
-            //           <Dialog.Title className="text-lg font-medium text-foreground">
-            //             Hóa đơn phòng {selectedRoom.number_room}
-            //           </Dialog.Title>
-            //           <button
-            //             onClick={() => setShowInvoiceView(false)}
-            //             className="p-2 hover:bg-muted rounded-lg transition-colors"
-            //           >
-            //             <FiX className="text-muted-foreground" />
-            //           </button>
-            //         </div>
-
             <InvoiceView
               room={selectedRoom}
               invoices={getRoomInvoices(selectedRoom.id)}
@@ -465,12 +408,76 @@ export default function InvoiceManagement() {
               onDelete={handleDeleteInvoice}
               onClose={() => setShowInvoiceView(false)}
             />
-            //       </Dialog.Panel>
-            //     </div>
-            //   </div>
-            // </Dialog>
           )}
         </AnimatePresence>
+        <Transition
+          appear
+          show={showDeleteDialog}
+          as={Fragment}
+        >
+          <Dialog
+            as="div"
+            className="relative z-50"
+            onClose={setShowDeleteDialog}
+          >
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="fixed inset-0 bg-black bg-opacity-25" />
+            </Transition.Child>
+
+            <div className="fixed inset-0 overflow-y-auto">
+              <div className="flex min-h-full items-center justify-center p-4 text-center">
+                <Transition.Child
+                  as={Fragment}
+                  enter="ease-out duration-300"
+                  enterFrom="opacity-0 scale-95"
+                  enterTo="opacity-100 scale-100"
+                  leave="ease-in duration-200"
+                  leaveFrom="opacity-100 scale-100"
+                  leaveTo="opacity-0 scale-95"
+                >
+                  <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                    <Dialog.Title
+                      as="h3"
+                      className="text-lg font-medium leading-6 text-gray-900 mb-2"
+                    >
+                      Xác nhận xóa hoá đơn
+                    </Dialog.Title>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500">
+                        Bạn có chắc chắn muốn xóa hoá đơn này không? Hành động
+                        này không thể hoàn tác và sẽ xóa tất cả dữ liệu liên
+                        quan đến hoá đơn này.
+                      </p>
+                    </div>
+
+                    <div className="mt-4 flex justify-end gap-3">
+                      <button
+                        onClick={() => setShowDeleteDialog(false)}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-200"
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        onClick={confirmDeleteInvoice}
+                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors duration-200"
+                      >
+                        Xóa hoá đơn
+                      </button>
+                    </div>
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
+            </div>
+          </Dialog>
+        </Transition>
       </div>
     </div>
   );

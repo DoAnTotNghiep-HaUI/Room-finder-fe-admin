@@ -2,10 +2,9 @@ import { RoomParams } from "@/types/room";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { createSlice } from "@reduxjs/toolkit";
 import {
-  // getListRoom,
   getListRoomByLandlord,
-  getRoomCheapPrice,
   getListRoomByBuilding,
+  getAllRoomByLandlord,
 } from "./action";
 
 const initialState: RoomParams = {
@@ -44,25 +43,19 @@ const roomSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // .addCase(getListRoom.pending, (state) => {
-      //   state.isLoading = true;
-      // })
-      // .addCase(getListRoom.fulfilled, (state, action) => {
-      //   state.roomList = action.payload.data;
-      //   console.log(" action.payload", action.payload);
-
-      //   state.isLoading = false;
-      //   const totalItems = action.payload.total;
-      //   const itemsPerPage = action.payload.limit || 10;
-      //   const totalPages = Math.ceil(totalItems / itemsPerPage);
-
-      //   state.pagination = {
-      //     currentPage: action.payload.page || 1,
-      //     totalPages,
-      //     totalItems,
-      //     itemsPerPage,
-      //   };
-      // })
+      .addCase(getAllRoomByLandlord.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getAllRoomByLandlord.fulfilled, (state, action) => {
+        state.roomList = action.payload;
+        state.isLoading = false;
+      })
+      .addCase(getAllRoomByLandlord.rejected, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(getListRoomByLandlord.pending, (state) => {
+        state.isLoading = true;
+      })
       .addCase(getListRoomByLandlord.fulfilled, (state, action) => {
         state.roomList = action.payload.data;
         const totalItems = action.payload.total;
@@ -77,19 +70,12 @@ const roomSlice = createSlice({
         };
         console.log("action.payload", action.payload);
       })
-      .addCase(getListRoomByBuilding.pending, (state) => {
-        state.isLoading = true;
-      })
       .addCase(getListRoomByBuilding.fulfilled, (state, action) => {
         state.roomByBuilding = action.payload;
 
         state.isLoading = false;
       })
       .addCase(getListRoomByBuilding.rejected, (state) => {
-        state.isLoading = false;
-      })
-      .addCase(getRoomCheapPrice.fulfilled, (state, action) => {
-        state.roomCheapPrice = action.payload;
         state.isLoading = false;
       });
   },

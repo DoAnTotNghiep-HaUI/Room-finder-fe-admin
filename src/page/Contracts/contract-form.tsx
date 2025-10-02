@@ -18,6 +18,8 @@ import {
   getListContractsByLandlord,
   updateContract,
 } from "@/redux/contracts/action";
+import { createRecentActivity } from "@/redux/recent-activities/action";
+import dayjs from "dayjs";
 
 interface ContractFormProps {
   contract: IRentalContract | null;
@@ -170,9 +172,29 @@ const ContractForm: React.FC<ContractFormProps> = ({
           data: formDataSubmit,
         })
       );
+      await dispatch(
+        createRecentActivity({
+          type: "contract",
+          message: `Hợp đồng ${formDataSubmit.contract_number} đã được cập nhật`,
+          landlord: userInfo.id,
+        })
+      );
     }
     if (mode === "add") {
-      await dispatch(createContract(formDataSubmit));
+      const today = dayjs().format("DDMMYY");
+      const roomNumber = data.room?.number_room || data.room?.id || "";
+      const contractNumber = `HD${today}${roomNumber}`;
+
+      await dispatch(
+        createContract({ ...formDataSubmit, contract_number: contractNumber })
+      );
+      await dispatch(
+        createRecentActivity({
+          type: "contract",
+          message: `Hợp đồng ${contractNumber} đã được tạo`,
+          landlord: userInfo.id,
+        })
+      );
     }
     await dispatch(getListContractsByLandlord(userInfo?.id));
     onSubmit(formDataSubmit);
@@ -246,7 +268,7 @@ const ContractForm: React.FC<ContractFormProps> = ({
                         Thông tin hợp đồng
                       </h4>
                       <div className="space-y-3">
-                        <div>
+                        {/* <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Số hợp đồng *
                           </label>
@@ -261,7 +283,7 @@ const ContractForm: React.FC<ContractFormProps> = ({
                               {errors.contract_number.message}
                             </p>
                           )}
-                        </div>
+                        </div> */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Ngày bắt đầu *

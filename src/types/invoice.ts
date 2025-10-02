@@ -45,6 +45,7 @@ export interface InvoiceData {
 
   // Grand Total
   grandTotal: number;
+  payment_info?: IPaymentInfo;
 }
 
 export interface IInvoice {
@@ -75,6 +76,7 @@ export interface IInvoice {
   status: "paid" | "unpaid" | "overdue";
   date_created: string;
   date_updated: string;
+  payment_info?: IPaymentInfo;
 }
 
 export interface IInvoiceService {
@@ -84,4 +86,11 @@ export interface IInvoiceService {
   unit_price: number;
   total: number;
   unit: string;
+}
+export interface IPaymentInfo {
+  bank_account: string;
+  bank_owner: string;
+  bank_name: string;
+  payment_content: string;
+  hotline: string;
 }

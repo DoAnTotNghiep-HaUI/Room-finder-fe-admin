@@ -5,7 +5,6 @@ import { createItem, readItem, readItems, updateItem } from "@directus/sdk";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { AppState } from "..";
 import { openTempConversation, setConversationId } from "./store";
-import { getConversationById } from "../conversation-detail/action";
 
 export const checkConversationExists = createAsyncThunk(
   "conversation/checkConversationExists",

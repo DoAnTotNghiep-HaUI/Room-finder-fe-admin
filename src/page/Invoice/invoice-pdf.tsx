@@ -7,6 +7,7 @@ import { IInvoice } from "@/types/invoice";
 import PDFDownloadButton from "./pdf-download-button";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import InvoicePDFDocument from "./pdf-download-document";
+import MDEditor from "@uiw/react-md-editor";
 
 interface InvoicePDFProps {
   invoice: IInvoice;
@@ -358,77 +359,89 @@ export default function InvoicePDF({ invoice, onClose }: InvoicePDFProps) {
                       </tbody>
                     </table>
                   </div>
-
                   {/* Footer */}
-                  <div className="space-y-4 text-sm">
-                    <p className="text-center">
-                      <span>Quy khách vui lòng chuyển khoản </span>
-                      <span className="font-bold">ĐÚNG</span>
-                      <span> số tiền </span>
-                      <span className="font-bold">ĐÚNG</span>
-                      <span> nội dung và </span>
-                      <span className="font-bold">
-                        ĐÚNG SỐ TÀI KHOẢN BAN QUẢN LÝ ĐÃ CUNG CẤP
-                      </span>
-                      <span>. BAN QUẢN LÝ SẼ </span>
-                      <span className="font-bold">
-                        KHÔNG CHỊU TRÁCH NHIỆM NẾU QUY KHÁCH CHUYỂN TIỀN VÀO SỐ
-                        TÀI KHOẢN KHÁC!
-                      </span>
-                    </p>
+                  {invoice.payment_info && (
+                    <div className="space-y-4 text-sm">
+                      {/* <MDEditor
+                      value={invoice.description}
+                      preview="preview"
+                      
+                    /> */}
+                      <p className="text-center">
+                        <span>Quy khách vui lòng chuyển khoản </span>
+                        <span className="font-bold">ĐÚNG</span>
+                        <span> số tiền </span>
+                        <span className="font-bold">ĐÚNG</span>
+                        <span> nội dung và </span>
+                        <span className="font-bold">
+                          ĐÚNG SỐ TÀI KHOẢN BAN QUẢN LÝ ĐÃ CUNG CẤP
+                        </span>
+                        <span>. BAN QUẢN LÝ SẼ </span>
+                        <span className="font-bold">
+                          KHÔNG CHỊU TRÁCH NHIỆM NẾU QUY KHÁCH CHUYỂN TIỀN VÀO
+                          SỐ TÀI KHOẢN KHÁC!
+                        </span>
+                      </p>
 
-                    <div className="text-center">
-                      <span>Nội dung chuyển khoản: </span>
-                      <span className="font-bold text-red-600">
-                        {invoice.invoice_number}{" "}
-                        {invoice.contract.contract_number}
-                      </span>
-                      <span className="ml-4">Ngân hàng thụ hưởng </span>
-                      <span className="font-bold text-red-600">8851062547</span>
-                      <span className="ml-4 font-bold text-red-600">
-                        PHAM HOAI THU
-                      </span>
-                      <span className="ml-4 font-bold text-red-600">BIDV</span>
-                    </div>
+                      <div className="text-center">
+                        <span>Nội dung chuyển khoản: </span>
+                        <span className="font-bold text-red-600">
+                          {invoice.payment_info.payment_content}
+                        </span>
+                        <span className="ml-4">Ngân hàng thụ hưởng </span>
+                        <span className="font-bold text-red-600">
+                          {invoice.payment_info.bank_account}
+                        </span>
+                        <span className="ml-4 font-bold text-red-600">
+                          {invoice.payment_info.bank_owner}
+                        </span>
+                        <span className="ml-4 font-bold text-red-600">
+                          {invoice.payment_info.bank_name}
+                        </span>
+                      </div>
 
-                    <div className="text-center">
-                      <span>Trong đó: </span>
-                      <span className="font-bold">
-                        {invoice.contract.room.building.name}
-                      </span>
-                      <span> là tòa nhà </span>
-                      <span className="font-bold">
-                        {invoice.contract.room.number_room}
-                      </span>
-                      <span> là số phòng </span>
-                      <span className="font-bold">
-                        {invoice.contract.contract_number}
-                      </span>
-                      <span> là tháng thanh toán</span>
-                    </div>
+                      <div className="text-center">
+                        <span>Trong đó: </span>
+                        <span className="font-bold">
+                          {invoice.contract.room.building.name}
+                        </span>
+                        <span> là tòa nhà </span>
+                        <span className="font-bold">
+                          {invoice.contract.room.number_room}
+                        </span>
+                        <span> là số phòng </span>
+                        <span className="font-bold">{getCurrentMonth()}</span>
+                        <span> là tháng thanh toán</span>
+                      </div>
 
-                    <div className="text-center font-bold">
+                      {/* <div className="text-center font-bold">
                       BAN QUẢN LÝ XIN TRAO TẶNG 10.000.000 CHO MỖI TRƯỜNG HỢP
                       PHÁT HIỆN SAI PHẠM TRONG THU TIỀN KHÁCH HÀNG CỦA QUẢN LÝ
                       TÒA NHÀ.
-                    </div>
+                    </div> */}
 
-                    <div className="text-center">
-                      <span>Phản ánh và thắc mắc xin liên hệ: Hotline: </span>
-                      <span className="font-bold">0392 136 792</span>
-                    </div>
-
-                    <div className="flex justify-between mt-8">
                       <div className="text-center">
-                        <div className="font-bold text-lg mb-2">
-                          BAN QUẢN LÝ RENHOUSE
+                        <span>Phản ánh và thắc mắc xin liên hệ: Hotline: </span>
+                        <span className="font-bold">
+                          {invoice.payment_info.hotline}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between mt-8">
+                        <div className="text-center">
+                          <div className="font-bold text-lg mb-2">
+                            BAN QUẢN LÝ{" "}
+                            {invoice.contract.room.building.name.toUpperCase()}
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-bold text-lg mb-2">
+                            KHÁCH HÀNG
+                          </div>
                         </div>
                       </div>
-                      <div className="text-center">
-                        <div className="font-bold text-lg mb-2">KHÁCH HÀNG</div>
-                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </Dialog.Panel>
             </Transition.Child>

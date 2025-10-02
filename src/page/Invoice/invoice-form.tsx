@@ -13,11 +13,12 @@ import {
 } from "react-icons/fi";
 import { Dialog, Transition, Listbox } from "@headlessui/react";
 import { IRoom, IService } from "@/types/room";
-import { IInvoice, IInvoiceService } from "@/types/invoice";
+import { IInvoice, IInvoiceService, IPaymentInfo } from "@/types/invoice";
 import App from "@/App";
 import { AppDispatch, AppState } from "@/redux";
 import { useDispatch, useSelector } from "react-redux";
 import { getListServices } from "@/redux/services/action";
+import MDEditor from "@uiw/react-md-editor";
 
 interface InvoiceFormProps {
   room: IRoom;
@@ -44,6 +45,7 @@ interface FormData {
     name: string;
   }[];
   description: string;
+  payment_info?: IPaymentInfo;
 }
 
 // const mockServices: IService[] = [
@@ -69,11 +71,13 @@ export default function InvoiceForm({
   const [selectedServices, setSelectedServices] = useState<IInvoiceService[]>(
     []
   );
+  console.log("invoice", invoice);
+
   console.log("room", room);
   const getElectricService = () =>
-    room.services.find((service) => service.name.toLowerCase() === "điện");
+    room?.services?.find((service) => service?.name?.toLowerCase() === "điện");
   const getWaterService = () =>
-    room.services.find((service) => service.name.toLowerCase() === "nước");
+    room?.services?.find((service) => service?.name?.toLowerCase() === "nước");
 
   const electricService = getElectricService();
   const waterService = getWaterService();
@@ -112,6 +116,13 @@ export default function InvoiceForm({
       water_people_count: invoice?.water_people_count || 1,
       // services: invoice?.services || [],
       description: invoice?.description || "",
+      payment_info: invoice?.payment_info || {
+        bank_account: "",
+        bank_owner: "",
+        bank_name: "",
+        payment_content: "",
+        hotline: "",
+      },
     },
   });
 
@@ -243,7 +254,7 @@ export default function InvoiceForm({
       // room,
       contract: room.contract!,
       invoice_number:
-        invoice?.invoice_number || `HD${invoiceOrder}${month}${year}`,
+        invoice?.invoice_number || `HD0${invoiceOrder}${month}${year}`,
       // days_count: calculateDays(data.from_date, data.to_date),
       // room_price: calculateRoomPrice(),
       electricity_usage: Math.max(
@@ -352,8 +363,9 @@ export default function InvoiceForm({
                           Khách thuê:
                         </span>
                         <p className="font-medium text-foreground">
-                          {`${room.contract?.tenant?.first_name} ${room.contract?.tenant?.last_name}` ||
-                            "N/A"}
+                          {invoice
+                            ? `${invoice?.contract?.tenant?.first_name} ${invoice?.contract?.tenant?.last_name}`
+                            : `${room?.contract?.tenant?.first_name} ${room?.contract?.tenant?.last_name} `}
                         </p>
                       </div>
                       <div>
@@ -361,7 +373,9 @@ export default function InvoiceForm({
                           Mã hợp đồng:
                         </span>
                         <p className="font-medium text-foreground">
-                          {room.contract?.contract_number || "N/A"}
+                          {invoice
+                            ? invoice?.contract?.contract_number
+                            : room?.contract?.contract_number || "N/A"}
                         </p>
                       </div>
                       <div>
@@ -837,7 +851,96 @@ export default function InvoiceForm({
                       </div>
                     )}
                   </div>
-
+                  <div className="bg-card border border-border rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <FiFileText className="text-primary" />
+                      <h3 className="font-semibold text-foreground">
+                        Thông tin thanh toán
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Số tài khoản ngân hàng
+                        </label>
+                        <Controller
+                          name="payment_info.bank_account"
+                          control={control}
+                          render={({ field }) => (
+                            <input
+                              {...field}
+                              type="text"
+                              className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Chủ tài khoản
+                        </label>
+                        <Controller
+                          name="payment_info.bank_owner"
+                          control={control}
+                          render={({ field }) => (
+                            <input
+                              {...field}
+                              type="text"
+                              className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Ngân hàng
+                        </label>
+                        <Controller
+                          name="payment_info.bank_name"
+                          control={control}
+                          render={({ field }) => (
+                            <input
+                              {...field}
+                              type="text"
+                              className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Nội dung chuyển khoản
+                        </label>
+                        <Controller
+                          name="payment_info.payment_content"
+                          control={control}
+                          render={({ field }) => (
+                            <input
+                              {...field}
+                              type="text"
+                              className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Hotline
+                        </label>
+                        <Controller
+                          name="payment_info.hotline"
+                          control={control}
+                          render={({ field }) => (
+                            <input
+                              {...field}
+                              type="text"
+                              className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
                   {/* Description */}
                   <div className="bg-card border border-border rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-4">
@@ -848,12 +951,16 @@ export default function InvoiceForm({
                       name="description"
                       control={control}
                       render={({ field }) => (
-                        <textarea
-                          {...field}
-                          rows={4}
-                          placeholder="Nhập ghi chú cho hóa đơn..."
-                          className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                        />
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Mô tả
+                          </label>
+                          <MDEditor
+                            value={field.value}
+                            onChange={field.onChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent"
+                          />
+                        </div>
                       )}
                     />
                   </div>

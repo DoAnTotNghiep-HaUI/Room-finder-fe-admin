@@ -8,6 +8,8 @@ import {
   Font,
 } from "@react-pdf/renderer";
 import { IInvoice } from "@/types/invoice";
+import MDEditor from "@uiw/react-md-editor";
+import MarkdownRenderer from "./markdown-render";
 Font.register({
   family: "Roboto",
   fonts: [
@@ -165,7 +167,8 @@ export default function InvoicePDFDocument({ invoice }: { invoice: IInvoice }) {
             <Text>
               Họ và tên khách hàng:{" "}
               <Text style={[styles.bold, { fontSize: 12 }]}>
-                {invoice.contract.tenant.id}
+                {invoice.contract.tenant.first_name}{" "}
+                {invoice.contract.tenant.last_name}
               </Text>
             </Text>
             <Text>
@@ -320,36 +323,43 @@ export default function InvoicePDFDocument({ invoice }: { invoice: IInvoice }) {
         </View>
 
         {/* Footer */}
-        <View style={styles.footer}>
-          <Text>
-            Quý khách vui lòng chuyển khoản ĐÚNG số tiền, ĐÚNG nội dung, và ĐÚNG
-            số tài khoản được cung cấp. Ban quản lý KHÔNG chịu trách nhiệm nếu
-            quý khách chuyển vào tài khoản khác!
-          </Text>
+        {invoice.payment_info && (
+          <View style={styles.footer}>
+            {/* <MarkdownRenderer md={invoice.description} /> */}
+            <Text>
+              Quý khách vui lòng chuyển khoản <Text>ĐÚNG</Text> số tiền,
+              <Text>ĐÚNG</Text> nội dung, và{" "}
+              <Text>ĐÚNG số tài khoản được cung cấp.</Text> Ban quản lý KHÔNG{" "}
+              <Text>chịu</Text>
+              trách nhiệm nếu quý khách chuyển vào tài khoản khác!
+            </Text>
 
-          <Text>
-            Nội dung CK: {invoice.invoice_number}{" "}
-            {invoice.contract.contract_number} | STK{" "}
-            <Text style={styles.bold}>8851062547 - PHAM HOAI THU - BIDV</Text>
-          </Text>
+            <Text>
+              Nội dung CK:
+              <Text style={styles.bold}>
+                {invoice.payment_info.payment_content}
+              </Text>
+              | STK{" "}
+              <Text style={{ color: "#fe0000ff" }}>
+                {invoice.payment_info.bank_account} -{" "}
+                {invoice.payment_info.bank_owner} -{" "}
+                {invoice.payment_info.bank_name}
+              </Text>
+            </Text>
 
-          <Text>
-            Trong đó: {invoice.contract.room.building.name} = tòa nhà,{" "}
-            {invoice.contract.room.number_room} = số phòng,{" "}
-            {invoice.contract.contract_number} = hợp đồng
-          </Text>
-
-          <Text style={{ marginTop: 6, fontWeight: "bold" }}>
-            BAN QUẢN LÝ XIN TRAO TẶNG 10.000.000Đ CHO MỖI TRƯỜNG HỢP PHÁT HIỆN
-            SAI PHẠM TRONG THU TIỀN
-          </Text>
-
-          <Text>Hotline: 0392 136 792</Text>
-        </View>
-
+            <Text>
+              Trong đó: {invoice.contract.room.building.name} = tòa nhà,{" "}
+              {invoice.contract.room.number_room} = số phòng,{" "}
+              {getCurrentMonth(invoice.from_date)} = tháng thanh toán
+            </Text>
+            <Text>Hotline: {invoice.payment_info.hotline}</Text>
+          </View>
+        )}
         {/* Ký tên */}
         <View style={styles.signRow}>
-          <Text>BAN QUẢN LÝ RENHOUSE</Text>
+          <Text>
+            BAN QUẢN LÝ {invoice.contract.room.building.name.toUpperCase()}
+          </Text>
           <Text>KHÁCH HÀNG</Text>
         </View>
       </Page>
